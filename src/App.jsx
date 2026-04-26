@@ -66,6 +66,14 @@ function BookingRoute({ onAccount, onCatalog, onHome }) {
   );
 }
 
+function HardRedirect({ to }) {
+  React.useEffect(() => {
+    window.location.replace(to);
+  }, [to]);
+
+  return null;
+}
+
 function RoutedApp() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -113,6 +121,8 @@ function RoutedApp() {
 
       <Routes>
         <Route path="/" element={<HomePage onCatalog={goCatalog} onOpenScooter={openScooter} />} />
+        <Route path="/admin" element={<HardRedirect to="/admin/" />} />
+        <Route path="/mobile" element={<HardRedirect to="/mobile/" />} />
         <Route path="/fleet" element={<CatalogPage onOpenScooter={openScooter} />} />
         <Route
           path="/fleet/:slug"
