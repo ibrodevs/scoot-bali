@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scoot Bali — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f7f7f8; color: #000; -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; }
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+  input, select, textarea, button { font-family: inherit; }
+  input[type=range] { -webkit-appearance: none; height: 3px; background: #e0e0e0; border-radius: 2px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #FFD700; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="root" style="height:100vh"></div>
+<script src="src/data.js"></script>
+<script type="text/babel">
+
+const A = {
+  bg: '#f7f7f8', sidebar: '#0d0d0d', white: '#ffffff',
+  black: '#000000', gold: '#FFD700',
+  g100: '#F5F5F5', g200: '#EBEBEB', g300: '#CCCCCC', g400: '#AAAAAA', g500: '#888888', g700: '#444444',
+  green: '#16a34a', red: '#dc2626', blue: '#2563eb', orange: '#ea580c',
+  greenBg: '#f0fdf4', redBg: '#fef2f2', blueBg: '#eff6ff', orangeBg: '#fff7ed',
+};
+
+/* ── MINI COMPONENTS ── */
+function ABadge({ children, color='default' }) {
+  const map = { default:[A.g100,A.g700], gold:[A.gold,A.black], green:[A.greenBg,A.green], red:[A.redBg,A.red], blue:[A.blueBg,A.blue], orange:[A.orangeBg,A.orange] };
+  const [bg,c] = map[color]||map.default;
+  return <span style={{background:bg,color:c,padding:'3px 10px',borderRadius:100,fontSize:11,fontWeight:700,fontFamily:'Inter',textTransform:'uppercase',letterSpacing:'0.05em',display:'inline-flex',alignItems:'center',gap:4}}>{children}</span>;
+}
+
+function ABtn({ children, variant='primary', size='sm', onClick, style }) {
+  const vars = { primary:{bg:A.gold,color:A.black}, dark:{bg:A.black,color:A.white}, outline:{bg:'transparent',color:A.black,border:`1.5px solid ${A.g200}`}, ghost:{bg:A.g100,color:A.g700} };
+  const v = vars[variant]||vars.primary;
+  const sz = size==='md'?'10px 20px':'8px 14px';
+  const fs = size==='md'?14:12;
+  return <button onClick={onClick} style={{padding:sz,fontSize:fs,fontWeight:600,fontFamily:'Inter',borderRadius:8,border:'none',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6,whiteSpace:'nowrap',...v,...style}}>{children}</button>;
+}
+
+function KpiCard({ label, value, delta, color='black', icon }) {
+  const pos = delta?.startsWith('+');
+  return (
+    <div style={{background:A.white,borderRadius:14,padding:'22px 24px',border:`1px solid ${A.g200}`}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
+        <div style={{fontFamily:'Inter',fontSize:12,fontWeight:600,color:A.g500,letterSpacing:'0.06em',textTransform:'uppercase'}}>{label}</div>
+        <div style={{width:36,height:36,background:color===A.gold?A.gold:A.g100,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>{icon}</div>
+      </div>
+      <div style={{fontFamily:'Sora',fontWeight:800,fontSize:32,letterSpacing:'-0.04em',color:A.black,marginBottom:8}}>{value}</div>
+      {delta && <div style={{fontFamily:'Inter',fontSize:12,color:pos?A.green:A.red,fontWeight:600}}>{pos?'↑':'↓'} {delta} vs last month</div>}
+    </div>
+  );
+}
+
+function SectionHeader({ title, subtitle, action }) {
+  return (
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:20}}>
+      <div>
+        <h2 style={{fontFamily:'Sora',fontWeight:700,fontSize:22,letterSpacing:'-0.03em',color:A.black,marginBottom:3}}>{title}</h2>
+        {subtitle && <p style={{fontFamily:'Inter',fontSize:13,color:A.g500}}>{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function Table({ cols, rows }) {
+  return (
+    <div style={{background:A.white,borderRadius:14,border:`1px solid ${A.g200}`,overflow:'hidden'}}>
+      <div style={{display:'grid',gridTemplateColumns:cols.map(c=>c.w||'1fr').join(' '),padding:'12px 20px',borderBottom:`1px solid ${A.g200}`,background:A.g100}}>
+        {cols.map(c=><div key={c.key} style={{fontFamily:'Inter',fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:A.g500}}>{c.label}</div>)}
+      </div>
+      {rows.map((row,i)=>(
+        <div key={i} style={{display:'grid',gridTemplateColumns:cols.map(c=>c.w||'1fr').join(' '),padding:'14px 20px',borderBottom:i<rows.length-1?`1px solid ${A.g200}`:'none',alignItems:'center'}}>
+          {cols.map(c=><div key={c.key}>{row[c.key]}</div>)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── VIEWS ── */
+
+function Overview() {
+  const bookings = [
+    { id:'#SB-28491', customer:'Alex K.', vehicle:'Honda PCX 160', zone:'Seminyak', status:'active', total:'$16.5', date:'Nov 12' },
+    { id:'#SB-28490', customer:'Sarah M.', vehicle:'Yamaha NMAX 155', zone:'Canggu', status:'active', total:'$18.6', date:'Nov 12' },
+    { id:'#SB-28487', customer:'James L.', vehicle:'Honda ADV 150', zone:'Ubud', status:'pending', total:'$21.3', date:'Nov 11' },
+    { id:'#SB-28483', customer:'Mei W.', vehicle:'Royal Enfield Meteor', zone:'Seminyak', status:'completed', total:'$63.5', date:'Nov 10' },
+    { id:'#SB-28479', customer:'Lars B.', vehicle:'Yamaha Aerox 155', zone:'Kuta', status:'completed', total:'$10.4', date:'Nov 9' },
+  ];
+
+  const statusColor = { active:'green', pending:'orange', completed:'default' };
+
+  const miniBarData = [42,58,51,67,73,61,88,92,78,85,91,96];
+
+  return (
+    <div style={{overflowY:'auto',height:'100%',padding:'28px 32px'}}>
+      {/* KPIs */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:28}}>
+        <KpiCard label="Revenue (MTD)" value="$12,480" delta="+23%" icon="💰" />
+        <KpiCard label="Active Bookings" value="18" delta="+4" icon="🛵" />
+        <KpiCard label="Fleet Utilization" value="76%" delta="+8%" icon="📊" />
+        <KpiCard label="Avg. Booking Value" value="$24.6" delta="+12%" icon="⭐" />
+      </div>
+
+      {/* Revenue chart placeholder + recent */}
+      <div style={{display:'grid',gridTemplateColumns:'1.6fr 1fr',gap:16,marginBottom:28}}>
+        <div style={{background:A.white,borderRadius:14,padding:'24px',border:`1px solid ${A.g200}`}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
+            <div>
+              <div style={{fontFamily:'Sora',fontWeight:700,fontSize:16,color:A.black,marginBottom:2}}>Revenue</div>
+              <div style={{fontFamily:'Inter',fontSize:12,color:A.g500}}>Last 12 months</div>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              {['7D','30D','90D','1Y'].map((t,i)=>(
+                <div key={t} style={{padding:'5px 10px',borderRadius:6,background:i===3?A.black:A.g100,fontFamily:'Inter',fontSize:12,fontWeight:600,color:i===3?A.white:A.g500,cursor:'pointer'}}>{t}</div>
+              ))}
+            </div>
+          </div>
+          {/* Bar chart */}
+          <div style={{display:'flex',alignItems:'flex-end',gap:6,height:120}}>
+            {miniBarData.map((v,i)=>(
+              <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                <div style={{width:'100%',background:i===miniBarData.length-1?A.gold:A.g200,borderRadius:'3px 3px 0 0',height:`${v}%`,minHeight:4,transition:'height 0.3s'}}/>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',marginTop:8}}>
+            {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(m=>(
+              <div key={m} style={{fontFamily:'Inter',fontSize:10,color:A.g400,textAlign:'center',flex:1}}>{m}</div>
+            ))}
+          </div>
+        </div>
+        {/* Fleet status donut placeholder */}
+        <div style={{background:A.white,borderRadius:14,padding:'24px',border:`1px solid ${A.g200}`}}>
+          <div style={{fontFamily:'Sora',fontWeight:700,fontSize:16,color:A.black,marginBottom:4}}>Fleet Status</div>
+          <div style={{fontFamily:'Inter',fontSize:12,color:A.g500,marginBottom:24}}>Real-time availability</div>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {[['Rented Out','8','76%',A.gold],['Available','3','24%',A.green],['Maintenance','1','8%',A.orange],['Booked (upcoming)','6','—',A.blue]].map(([l,n,p,c])=>(
+              <div key={l}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{width:10,height:10,borderRadius:'50%',background:c}}/>
+                    <span style={{fontFamily:'Inter',fontSize:13,color:A.black}}>{l}</span>
+                  </div>
+                  <span style={{fontFamily:'Sora',fontWeight:700,fontSize:14,color:A.black}}>{n}</span>
+                </div>
+                {p!=='—' && <div style={{height:4,background:A.g100,borderRadius:2}}><div style={{height:'100%',width:p,background:c,borderRadius:2}}/></div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent bookings */}
+      <SectionHeader title="Recent Bookings" subtitle={`${bookings.length} bookings today`} action={<ABtn variant="dark" size="md">View All →</ABtn>} />
+      <Table
+        cols={[
+          {key:'id',label:'ID',w:'100px'},{key:'customer',label:'Customer',w:'1fr'},{key:'vehicle',label:'Vehicle',w:'1.5fr'},
+          {key:'zone',label:'Zone',w:'120px'},{key:'date',label:'Date',w:'80px'},{key:'status',label:'Status',w:'120px'},{key:'total',label:'Total',w:'80px'},{key:'action',label:'',w:'100px'},
+        ]}
+        rows={bookings.map(b=>({
+          ...b,
+          id: <span style={{fontFamily:'Sora',fontWeight:700,fontSize:13,color:A.black}}>{b.id}</span>,
+          customer: <span style={{fontFamily:'Inter',fontSize:13,fontWeight:500,color:A.black}}>{b.customer}</span>,
+          vehicle: <span style={{fontFamily:'Inter',fontSize:13,color:A.g700}}>{b.vehicle}</span>,
+          zone: <span style={{fontFamily:'Inter',fontSize:13,color:A.g500}}>{b.zone}</span>,
+          date: <span style={{fontFamily:'Inter',fontSize:12,color:A.g500}}>{b.date}</span>,
+          status: <ABadge color={statusColor[b.status]}>{b.status}</ABadge>,
+          total: <span style={{fontFamily:'Sora',fontWeight:700,fontSize:14,color:A.black}}>{b.total}</span>,
+          action: <ABtn variant="outline">Details</ABtn>,
+        }))}
+      />
+    </div>
+  );
+}
+
+function FleetView() {
+  return (
+    <div style={{overflowY:'auto',height:'100%',padding:'28px 32px'}}>
+      <SectionHeader title="Fleet Management" subtitle={`${SCOOTERS.length} vehicles total`} action={<ABtn variant="primary" size="md">+ Add Vehicle</ABtn>} />
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
+        {SCOOTERS.map(s=>(
+          <div key={s.id} style={{background:A.white,borderRadius:16,overflow:'hidden',border:`1px solid ${A.g200}`}}>
+            <div style={{height:140,background:`linear-gradient(145deg,${s.accent} 0%,#1a1a1a 100%)`,position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <svg style={{position:'absolute',inset:0,width:'100%',height:'100%'}}>
+                {Array.from({length:8},(_,i)=><line key={i} x1={i*30} y1="0" x2={i*30-80} y2="140" stroke="rgba(255,255,255,0.025)" strokeWidth="20"/>)}
+              </svg>
+              <div style={{position:'relative',textAlign:'center'}}>
+                <div style={{color:'rgba(255,255,255,0.6)',fontFamily:'Sora',fontWeight:700,fontSize:14}}>{s.name}</div>
+                <div style={{color:A.gold,fontFamily:'Inter',fontSize:11,marginTop:4,letterSpacing:'0.1em'}}>{s.engine}</div>
+              </div>
+              <div style={{position:'absolute',top:12,right:12}}>
+                <ABadge color={s.available?'green':'orange'}>{s.available?'Available':'Rented'}</ABadge>
+              </div>
+            </div>
+            <div style={{padding:'16px 18px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+                <div>
+                  <div style={{fontFamily:'Sora',fontWeight:700,fontSize:15,color:A.black,letterSpacing:'-0.02em'}}>{s.name}</div>
+                  <div style={{fontFamily:'Inter',fontSize:12,color:A.g500,marginTop:2}}>{s.type} · {s.engine}</div>
+                </div>
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontFamily:'Sora',fontWeight:800,fontSize:20,color:A.black}}>${s.priceUSD}<span style={{fontFamily:'Inter',fontWeight:400,fontSize:11,color:A.g500}}>/d</span></div>
+                </div>
+              </div>
+              <div style={{display:'flex',gap:6,marginBottom:14}}>
+                {s.features.slice(0,2).map(f=><ABadge key={f}>{f}</ABadge>)}
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                <ABtn variant="dark" size="md" style={{fontSize:12}}>Edit</ABtn>
+                <ABtn variant="outline" size="md" style={{fontSize:12}}>History</ABtn>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BookingsView() {
+  const all = [
+    {id:'SB-28491',cust:'Alex K.',veh:'Honda PCX 160',zone:'Seminyak',dates:'Nov 12–15',days:3,pay:'Card',status:'active',total:16.5},
+    {id:'SB-28490',cust:'Sarah M.',veh:'Yamaha NMAX',zone:'Canggu',dates:'Nov 12–14',days:2,pay:'Cash',status:'active',total:12.4},
+    {id:'SB-28487',cust:'James L.',veh:'Honda ADV 150',zone:'Ubud',dates:'Nov 11–16',days:5,pay:'Crypto',status:'pending',total:35.5},
+    {id:'SB-28483',cust:'Mei W.',veh:'Royal Enfield',zone:'Seminyak',dates:'Nov 10–15',days:5,pay:'Card',status:'completed',total:63.5},
+    {id:'SB-28479',cust:'Lars B.',veh:'Yamaha Aerox',zone:'Kuta',dates:'Nov 9–11',days:2,pay:'Cash',status:'completed',total:10.4},
+    {id:'SB-28471',cust:'Anna S.',veh:'Honda Vario 160',zone:'Denpasar',dates:'Nov 8–10',days:2,pay:'Card',status:'completed',total:9.0},
+  ];
+  const [filter, setFilter] = React.useState('all');
+  const filtered = filter === 'all' ? all : all.filter(b => b.status === filter);
+  const payColor = { Card:'blue', Cash:'green', Crypto:'orange' };
+  const stColor = { active:'green', pending:'orange', completed:'default' };
+  return (
+    <div style={{overflowY:'auto',height:'100%',padding:'28px 32px'}}>
+      <SectionHeader title="Bookings" subtitle={`${all.length} total bookings`} action={<ABtn variant="primary" size="md">+ New Booking</ABtn>} />
+      <div style={{display:'flex',gap:8,marginBottom:20}}>
+        {['all','active','pending','completed'].map(f=>(
+          <div key={f} onClick={()=>setFilter(f)} style={{padding:'8px 18px',borderRadius:8,background:filter===f?A.black:A.white,border:`1px solid ${filter===f?A.black:A.g200}`,fontFamily:'Inter',fontSize:13,fontWeight:600,color:filter===f?A.white:A.g700,cursor:'pointer',textTransform:'capitalize'}}>{f==='all'?'All Bookings':f}</div>
+        ))}
+      </div>
+      <Table
+        cols={[
+          {key:'id',label:'Booking ID',w:'110px'},{key:'cust',label:'Customer',w:'1fr'},{key:'veh',label:'Vehicle',w:'1.2fr'},
+          {key:'zone',label:'Zone',w:'100px'},{key:'dates',label:'Dates',w:'1fr'},{key:'days',label:'Days',w:'60px'},
+          {key:'pay',label:'Payment',w:'90px'},{key:'status',label:'Status',w:'110px'},{key:'total',label:'Total',w:'80px'},{key:'a',label:'',w:'70px'},
+        ]}
+        rows={filtered.map(b=>({
+          id: <span style={{fontFamily:'Sora',fontWeight:700,fontSize:12,color:A.black}}>#{b.id}</span>,
+          cust: <span style={{fontFamily:'Inter',fontSize:13,fontWeight:500}}>{b.cust}</span>,
+          veh: <span style={{fontFamily:'Inter',fontSize:13,color:A.g700}}>{b.veh}</span>,
+          zone: <span style={{fontFamily:'Inter',fontSize:12,color:A.g500}}>{b.zone}</span>,
+          dates: <span style={{fontFamily:'Inter',fontSize:12,color:A.g700}}>{b.dates}</span>,
+          days: <span style={{fontFamily:'Sora',fontWeight:600,fontSize:13}}>{b.days}</span>,
+          pay: <ABadge color={payColor[b.pay]}>{b.pay}</ABadge>,
+          status: <ABadge color={stColor[b.status]}>{b.status}</ABadge>,
+          total: <span style={{fontFamily:'Sora',fontWeight:700,fontSize:14}}>${b.total}</span>,
+          a: <ABtn variant="ghost">···</ABtn>,
+        }))}
+      />
+    </div>
+  );
+}
+
+function CRMView() {
+  const customers = [
+    {name:'Alex K.',email:'alex@ex.com',flag:'🇷🇺',bookings:3,total:47.5,status:'vip',last:'Nov 12'},
+    {name:'Sarah M.',email:'sarah@ex.com',flag:'🇦🇺',bookings:2,total:29.0,status:'regular',last:'Nov 12'},
+    {name:'James L.',email:'james@ex.com',flag:'🇬🇧',bookings:4,total:85.2,status:'vip',last:'Nov 11'},
+    {name:'Mei W.',email:'mei@ex.com',flag:'🇨🇳',bookings:1,total:63.5,status:'new',last:'Nov 10'},
+    {name:'Lars B.',email:'lars@ex.com',flag:'🇩🇪',bookings:2,total:21.8,status:'regular',last:'Nov 9'},
+    {name:'Anna S.',email:'anna@ex.com',flag:'🇫🇷',bookings:1,total:9.0,status:'new',last:'Nov 8'},
+  ];
+  const stColor = { vip:'gold', regular:'blue', new:'green' };
+  return (
+    <div style={{overflowY:'auto',height:'100%',padding:'28px 32px'}}>
+      <SectionHeader title="CRM — Customers" subtitle="Manage relationships and segments" action={<ABtn variant="dark" size="md">Export CSV</ABtn>} />
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:24}}>
+        {[['Total Customers','247','👥'],['VIP Segment','34','⭐'],['Avg LTV','$68.4','💎']].map(([l,v,i])=>(
+          <div key={l} style={{background:A.white,borderRadius:14,padding:'18px 20px',border:`1px solid ${A.g200}`,display:'flex',alignItems:'center',gap:14}}>
+            <div style={{width:44,height:44,background:A.g100,borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>{i}</div>
+            <div><div style={{fontFamily:'Inter',fontSize:12,color:A.g500,marginBottom:3}}>{l}</div><div style={{fontFamily:'Sora',fontWeight:800,fontSize:22,color:A.black}}>{v}</div></div>
+          </div>
+        ))}
+      </div>
+      <Table
+        cols={[{key:'av',label:'',w:'44px'},{key:'name',label:'Customer',w:'1fr'},{key:'email',label:'Email',w:'1.5fr'},{key:'bookings',label:'Bookings',w:'90px'},{key:'total',label:'Total LTV',w:'100px'},{key:'status',label:'Segment',w:'100px'},{key:'last',label:'Last Booking',w:'120px'},{key:'a',label:'',w:'80px'}]}
+        rows={customers.map(c=>({
+          av: <div style={{width:36,height:36,background:A.gold,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Sora',fontWeight:800,fontSize:13,color:A.black}}>{c.name.split(' ').map(w=>w[0]).join('')}</div>,
+          name: <div><div style={{fontFamily:'Sora',fontWeight:600,fontSize:14,color:A.black}}>{c.flag} {c.name}</div></div>,
+          email: <span style={{fontFamily:'Inter',fontSize:13,color:A.g500}}>{c.email}</span>,
+          bookings: <span style={{fontFamily:'Sora',fontWeight:700,fontSize:14,color:A.black}}>{c.bookings}</span>,
+          total: <span style={{fontFamily:'Sora',fontWeight:700,fontSize:14,color:A.black}}>${c.total}</span>,
+          status: <ABadge color={stColor[c.status]}>{c.status}</ABadge>,
+          last: <span style={{fontFamily:'Inter',fontSize:12,color:A.g500}}>{c.last}</span>,
+          a: <ABtn variant="outline">View →</ABtn>,
+        }))}
+      />
+    </div>
+  );
+}
+
+function CalendarView() {
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const hours = Array.from({length:14},(_,i)=>i+7);
+  const bookingBlocks = [
+    {veh:'PCX 160',start:8,dur:3,day:1,color:'#1a7a3f',bg:'#e6f7ee'},
+    {veh:'NMAX 155',start:10,dur:4,day:2,color:'#1e40af',bg:'#eff6ff'},
+    {veh:'ADV 150',start:9,dur:6,day:0,color:'#9a3412',bg:'#fff7ed'},
+    {veh:'Aerox 155',start:13,dur:2,day:3,color:'#1a7a3f',bg:'#e6f7ee'},
+    {veh:'Meteor 350',start:8,dur:8,day:4,color:'#6d28d9',bg:'#f5f3ff'},
+    {veh:'PCX 160',start:11,dur:3,day:5,color:'#1a7a3f',bg:'#e6f7ee'},
+    {veh:'NMAX 155',start:7,dur:5,day:6,color:'#1e40af',bg:'#eff6ff'},
+  ];
+  return (
+    <div style={{overflowY:'auto',height:'100%',padding:'28px 32px'}}>
+      <SectionHeader title="Occupancy Calendar" subtitle="Week of November 11–17, 2024" action={
+        <div style={{display:'flex',gap:8}}>
+          <ABtn variant="outline">‹ Prev</ABtn>
+          <ABtn variant="dark" size="md">Today</ABtn>
+          <ABtn variant="outline">Next ›</ABtn>
+        </div>
+      }/>
+      <div style={{background:A.white,borderRadius:16,border:`1px solid ${A.g200}`,overflow:'hidden'}}>
+        {/* Header row */}
+        <div style={{display:'grid',gridTemplateColumns:'56px repeat(7,1fr)',borderBottom:`1px solid ${A.g200}`}}>
+          <div style={{padding:'12px 8px'}}/>
+          {days.map((d,i)=>(
+            <div key={d} style={{padding:'12px 8px',textAlign:'center',borderLeft:`1px solid ${A.g200}`,background:i===0?A.gold:A.white}}>
+              <div style={{fontFamily:'Inter',fontSize:11,fontWeight:700,color:i===0?A.black:A.g500,textTransform:'uppercase',letterSpacing:'0.08em'}}>{d}</div>
+              <div style={{fontFamily:'Sora',fontWeight:800,fontSize:20,color:i===0?A.black:A.black,marginTop:2}}>{11+i}</div>
+            </div>
+          ))}
+        </div>
+        {/* Time rows */}
+        <div style={{position:'relative'}}>
+          {hours.map(h=>(
+            <div key={h} style={{display:'grid',gridTemplateColumns:'56px repeat(7,1fr)',borderBottom:`1px solid ${A.g200}`,minHeight:44}}>
+              <div style={{padding:'12px 8px',display:'flex',alignItems:'flex-start'}}>
+                <span style={{fontFamily:'Inter',fontSize:10,color:A.g400,fontWeight:600}}>{h}:00</span>
+              </div>
+              {days.map((_,di)=>(
+                <div key={di} style={{borderLeft:`1px solid ${A.g200}`,position:'relative'}}>
+                  {bookingBlocks.filter(b=>b.day===di&&b.start===h).map((b,bi)=>(
+                    <div key={bi} style={{position:'absolute',inset:'2px 3px',background:b.bg,borderLeft:`3px solid ${b.color}`,borderRadius:'0 6px 6px 0',padding:'4px 6px',zIndex:2}}>
+                      <div style={{fontFamily:'Sora',fontWeight:700,fontSize:10,color:b.color,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{b.veh}</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsView() {
+  const zones = [['Seminyak',42,'#FFD700'],['Canggu',28,'#FFD700'],['Kuta',18,'#FFD700'],['Ubud',7,'#FFD700'],['Other',5,'#FFD700']];
+  return (
+    <div style={{overflowY:'auto',height:'100%',padding:'28px 32px'}}>
+      <SectionHeader title="Analytics" subtitle="Performance overview — November 2024" />
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:24}}>
+        {[['Gross Revenue','$12,480','+23%'],['Net Revenue','$10,850','+18%'],['Avg Daily Rate','$6.8/day','+5%'],['Return Rate','34%','+7%']].map(([l,v,d])=>(
+          <div key={l} style={{background:A.white,borderRadius:14,padding:'18px 20px',border:`1px solid ${A.g200}`}}>
+            <div style={{fontFamily:'Inter',fontSize:11,color:A.g500,marginBottom:8,textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>{l}</div>
+            <div style={{fontFamily:'Sora',fontWeight:800,fontSize:26,color:A.black,marginBottom:6}}>{v}</div>
+            <div style={{fontFamily:'Inter',fontSize:12,color:A.green,fontWeight:600}}>↑ {d} MoM</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1.5fr 1fr',gap:16,marginBottom:16}}>
+        {/* Vehicle performance */}
+        <div style={{background:A.white,borderRadius:14,padding:'24px',border:`1px solid ${A.g200}`}}>
+          <div style={{fontFamily:'Sora',fontWeight:700,fontSize:16,color:A.black,marginBottom:4}}>Vehicle Performance</div>
+          <div style={{fontFamily:'Inter',fontSize:12,color:A.g500,marginBottom:20}}>Revenue contribution by model</div>
+          {SCOOTERS.map((s,i)=>{
+            const pct = [38,28,16,10,5,3][i];
+            return (
+              <div key={s.id} style={{marginBottom:14}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+                  <span style={{fontFamily:'Inter',fontSize:13,color:A.black,fontWeight:500}}>{s.name}</span>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontFamily:'Sora',fontWeight:700,fontSize:13,color:A.black}}>{pct}%</span>
+                    <span style={{fontFamily:'Inter',fontSize:11,color:A.g500}}>${(12480*pct/100).toFixed(0)}</span>
+                  </div>
+                </div>
+                <div style={{height:6,background:A.g100,borderRadius:3}}><div style={{height:'100%',width:`${pct}%`,background:i===0?A.gold:A.black,borderRadius:3}}/></div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Zone breakdown */}
+        <div style={{background:A.white,borderRadius:14,padding:'24px',border:`1px solid ${A.g200}`}}>
+          <div style={{fontFamily:'Sora',fontWeight:700,fontSize:16,color:A.black,marginBottom:4}}>Delivery Zones</div>
+          <div style={{fontFamily:'Inter',fontSize:12,color:A.g500,marginBottom:20}}>Bookings by zone</div>
+          {zones.map(([z,n])=>(
+            <div key={z} style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+              <div style={{width:10,height:10,borderRadius:'50%',background:A.black,flexShrink:0}}/>
+              <span style={{fontFamily:'Inter',fontSize:13,color:A.black,flex:1}}>{z}</span>
+              <div style={{flex:2,height:6,background:A.g100,borderRadius:3}}>
+                <div style={{height:'100%',width:`${n}%`,background:A.gold,borderRadius:3}}/>
+              </div>
+              <span style={{fontFamily:'Sora',fontWeight:700,fontSize:13,color:A.black,minWidth:32,textAlign:'right'}}>{n}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SupportView() {
+  const [active, setActive] = React.useState(0);
+  const chats = [
+    {name:'Alex K.',flag:'🇷🇺',last:'ETA for my delivery?',time:'2m',unread:2,status:'active'},
+    {name:'Sarah M.',flag:'🇦🇺',last:'Thanks, all good!',time:'15m',unread:0,status:'resolved'},
+    {name:'James L.',flag:'🇬🇧',last:'Can I extend by 2 days?',time:'1h',unread:1,status:'active'},
+    {name:'Mei W.',flag:'🇨🇳',last:'How do I pay crypto?',time:'2h',unread:0,status:'pending'},
+  ];
+  const msgs = [
+    {from:'cust',text:'Hi! What\'s the ETA for my Honda PCX 160 delivery to Villa Seminyak?',time:'09:14'},
+    {from:'staff',text:'Hi Alex! Your scooter is on its way. ETA approximately 15 minutes. Driver is Wayan — he\'ll message you.',time:'09:15'},
+    {from:'cust',text:'Perfect, thank you! Do I need to show my driving license?',time:'09:16'},
+    {from:'staff',text:'Yes, please have your International Driving Permit and passport ready for verification. It only takes 2 minutes!',time:'09:16'},
+    {from:'cust',text:'Got it. See you soon!',time:'09:18'},
+  ];
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'300px 1fr',height:'100%'}}>
+      <div style={{borderRight:`1px solid ${A.g200}`,background:A.white,overflowY:'auto'}}>
+        <div style={{padding:'20px 16px',borderBottom:`1px solid ${A.g200}`}}>
+          <div style={{fontFamily:'Sora',fontWeight:700,fontSize:16,color:A.black,marginBottom:12}}>Support Chats</div>
+          <div style={{background:A.g100,borderRadius:8,padding:'9px 12px',display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:14}}>🔍</span>
+            <span style={{fontFamily:'Inter',fontSize:13,color:A.g500}}>Search conversations...</span>
+          </div>
+        </div>
+        {chats.map((c,i)=>(
+          <div key={i} onClick={()=>setActive(i)} style={{padding:'14px 16px',borderBottom:`1px solid ${A.g200}`,cursor:'pointer',background:active===i?'rgba(255,215,0,0.06)':A.white,borderLeft:active===i?`3px solid ${A.gold}`:'3px solid transparent'}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+              <span style={{fontFamily:'Sora',fontWeight:700,fontSize:14,color:A.black}}>{c.flag} {c.name}</span>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <span style={{fontFamily:'Inter',fontSize:11,color:A.g500}}>{c.time}</span>
+                {c.unread>0&&<div style={{width:18,height:18,background:A.gold,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Sora',fontWeight:800,fontSize:10,color:A.black}}>{c.unread}</div>}
+              </div>
+            </div>
+            <div style={{fontFamily:'Inter',fontSize:12,color:A.g500,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{c.last}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',background:A.g100}}>
+        <div style={{padding:'16px 24px',background:A.white,borderBottom:`1px solid ${A.g200}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <div style={{width:40,height:40,background:A.gold,borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Sora',fontWeight:800,fontSize:15,color:A.black}}>{chats[active].name.split(' ').map(w=>w[0]).join('')}</div>
+            <div><div style={{fontFamily:'Sora',fontWeight:700,fontSize:15,color:A.black}}>{chats[active].flag} {chats[active].name}</div><div style={{fontFamily:'Inter',fontSize:12,color:A.green}}>● Online</div></div>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <ABadge color={chats[active].status==='active'?'green':chats[active].status==='pending'?'orange':'default'}>{chats[active].status}</ABadge>
+            <ABtn variant="outline">View Profile</ABtn>
+            <ABtn variant="dark">Close Ticket</ABtn>
+          </div>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'20px 24px',display:'flex',flexDirection:'column',gap:12}}>
+          {msgs.map((m,i)=>(
+            <div key={i} style={{display:'flex',flexDirection:m.from==='staff'?'row-reverse':'row',gap:10,alignItems:'flex-end'}}>
+              {m.from==='cust'&&<div style={{width:32,height:32,background:A.gold,borderRadius:10,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Sora',fontWeight:800,fontSize:12,color:A.black}}>AK</div>}
+              <div style={{maxWidth:'70%'}}>
+                <div style={{background:m.from==='staff'?A.black:A.white,borderRadius:m.from==='staff'?'16px 4px 16px 16px':'4px 16px 16px 16px',padding:'12px 16px',boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+                  <p style={{fontFamily:'Inter',fontSize:14,lineHeight:1.6,color:m.from==='staff'?A.white:A.black,margin:0}}>{m.text}</p>
+                </div>
+                <div style={{fontFamily:'Inter',fontSize:10,color:A.g400,marginTop:4,textAlign:m.from==='staff'?'right':'left'}}>{m.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{padding:'16px 24px',background:A.white,borderTop:`1px solid ${A.g200}`,display:'flex',gap:12,alignItems:'center'}}>
+          <div style={{flex:1,background:A.g100,borderRadius:12,padding:'12px 16px',fontFamily:'Inter',fontSize:14,color:A.g500}}>Type a message...</div>
+          <div style={{width:44,height:44,background:A.gold,borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:18}}>➤</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── MAIN APP ── */
+const NAV = [
+  {id:'overview',icon:'📊',label:'Overview'},
+  {id:'bookings',icon:'📋',label:'Bookings'},
+  {id:'fleet',icon:'🛵',label:'Fleet'},
+  {id:'calendar',icon:'📅',label:'Calendar'},
+  {id:'crm',icon:'👥',label:'CRM'},
+  {id:'analytics',icon:'📈',label:'Analytics'},
+  {id:'support',icon:'💬',label:'Support'},
+];
+
+function AdminApp() {
+  const [view, setView] = React.useState('overview');
+  const viewMap = { overview:<Overview/>, bookings:<BookingsView/>, fleet:<FleetView/>, calendar:<CalendarView/>, crm:<CRMView/>, analytics:<AnalyticsView/>, support:<SupportView/> };
+
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'220px 1fr',height:'100vh',overflow:'hidden'}}>
+      {/* Sidebar */}
+      <div style={{background:A.sidebar,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{padding:'24px 20px',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div style={{width:30,height:30,background:A.gold,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center'}}><span style={{fontFamily:'Sora',fontWeight:900,fontSize:15,color:A.black}}>S</span></div>
+            <div>
+              <div style={{fontFamily:'Sora',fontWeight:700,fontSize:16,letterSpacing:'-0.03em',color:A.white}}>SCOOT <span style={{color:A.gold}}>BALI</span></div>
+              <div style={{fontFamily:'Inter',fontSize:10,color:'rgba(255,255,255,0.3)',letterSpacing:'0.06em',marginTop:1}}>ADMIN PANEL</div>
+            </div>
+          </div>
+        </div>
+        <nav style={{flex:1,overflowY:'auto',padding:'16px 10px'}}>
+          {NAV.map(n=>(
+            <div key={n.id} onClick={()=>setView(n.id)} style={{padding:'11px 14px',borderRadius:10,display:'flex',alignItems:'center',gap:10,cursor:'pointer',marginBottom:3,background:view===n.id?'rgba(255,215,0,0.12)':'transparent',transition:'background 0.2s'}}>
+              <span style={{fontSize:16,filter:view===n.id?'none':'grayscale(0.5) opacity(0.6)'}}>{n.icon}</span>
+              <span style={{fontFamily:'Inter',fontSize:14,fontWeight:view===n.id?700:400,color:view===n.id?A.white:'rgba(255,255,255,0.5)'}}>{n.label}</span>
+              {view===n.id&&<div style={{marginLeft:'auto',width:6,height:6,borderRadius:'50%',background:A.gold}}/>}
+            </div>
+          ))}
+        </nav>
+        <div style={{padding:'16px 14px',borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div style={{width:36,height:36,background:'rgba(255,215,0,0.15)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Sora',fontWeight:800,fontSize:14,color:A.gold}}>AD</div>
+            <div>
+              <div style={{fontFamily:'Inter',fontSize:13,fontWeight:600,color:A.white}}>Admin</div>
+              <div style={{fontFamily:'Inter',fontSize:11,color:'rgba(255,255,255,0.35)'}}>admin@scootbali.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main area */}
+      <div style={{display:'flex',flexDirection:'column',overflow:'hidden',background:A.bg}}>
+        {/* Top bar */}
+        <div style={{height:56,background:A.white,borderBottom:`1px solid ${A.g200}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 32px',flexShrink:0}}>
+          <div>
+            <span style={{fontFamily:'Sora',fontWeight:700,fontSize:16,color:A.black,textTransform:'capitalize'}}>{view}</span>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:16}}>
+            <div style={{width:32,height:32,background:A.g100,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:15}}>🔔</div>
+            <div style={{width:32,height:32,background:A.g100,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:15}}>⚙️</div>
+            <a href="Scoot Bali - Website.html" target="_blank" style={{textDecoration:'none'}}>
+              <ABtn variant="primary" size="md">↗ View Website</ABtn>
+            </a>
+          </div>
+        </div>
+        {/* View content */}
+        <div style={{flex:1,overflow:'hidden'}}>
+          {viewMap[view]}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<AdminApp />);
+</script>
+</body>
+</html>
