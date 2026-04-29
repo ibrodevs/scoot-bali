@@ -1,17 +1,23 @@
 import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountPage from './account';
+import { AuthProvider } from './auth-context';
 import BookingPage from './booking';
 import CatalogPage from './catalog';
-import { SCOOTERS } from './data';
 import DetailPage from './detail';
 import HomePage from './home';
 import { Footer, Nav } from './layout';
-import { Btn } from './ui';
+import { SiteProvider, useSite } from './site-context';
+import { Btn, C } from './ui';
 
-function findScooterBySlug(slug) {
-  return SCOOTERS.find((scooter) => scooter.slug === slug) ?? null;
-}
+const BOOTSTRAP_COPY = {
+  en: { loading: 'Loading live data...', loadingErrorTitle: 'Unable to load site data', retry: 'Retry' },
+  ru: { loading: 'Загружаю данные...', loadingErrorTitle: 'Не удалось загрузить данные сайта', retry: 'Повторить' },
+  zh: { loading: '正在加载数据...', loadingErrorTitle: '无法加载网站数据', retry: '重试' },
+  id: { loading: 'Memuat data...', loadingErrorTitle: 'Tidak dapat memuat data situs', retry: 'Coba lagi' },
+  de: { loading: 'Daten werden geladen...', loadingErrorTitle: 'Webseitendaten konnten nicht geladen werden', retry: 'Erneut versuchen' },
+  fr: { loading: 'Chargement des données...', loadingErrorTitle: 'Impossible de charger les données du site', retry: 'Réessayer' },
+};
 
 function pageFromPath(pathname) {
   if (pathname === '/') return 'home';
@@ -42,11 +48,53 @@ function ScrollManager() {
   return null;
 }
 
+function HardRedirect({ to }) {
+  React.useEffect(() => {
+    window.location.replace(to);
+  }, [to]);
+
+  return null;
+}
+
+function AppShell({ children }) {
+  const { loading, error, content, reload, lang } = useSite();
+  const common = content?.common;
+  const bootstrapCopy = BOOTSTRAP_COPY[lang] || BOOTSTRAP_COPY.en;
+
+  if (loading && !content) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.gray100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 20, padding: '32px 36px', textAlign: 'center', maxWidth: 420 }}>
+          <div style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 28, color: C.black, marginBottom: 12 }}>Scoot Bali</div>
+          <div style={{ fontFamily: 'Inter', fontSize: 15, color: C.gray500 }}>{common?.loading || bootstrapCopy.loading}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !content) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.gray100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 20, padding: '32px 36px', textAlign: 'center', maxWidth: 460 }}>
+          <div style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 26, color: C.black, marginBottom: 10 }}>{common?.loadingErrorTitle || bootstrapCopy.loadingErrorTitle}</div>
+          <div style={{ fontFamily: 'Inter', fontSize: 15, lineHeight: 1.7, color: C.gray500, marginBottom: 24 }}>{error}</div>
+          <Btn variant="dark" onClick={reload}>{common?.retry || bootstrapCopy.retry}</Btn>
+        </div>
+      </div>
+    );
+  }
+
+  return children;
+}
+
 function DetailRoute({ onCatalog, onHome, onBookScooter }) {
   const { slug } = useParams();
+  const { fleet } = useSite();
+  const scooter = fleet.find((item) => item.slug === slug) || null;
+
   return (
     <DetailPage
-      scooter={findScooterBySlug(slug)}
+      scooter={scooter}
       onBookScooter={onBookScooter}
       onCatalog={onCatalog}
       onHome={onHome}
@@ -56,9 +104,12 @@ function DetailRoute({ onCatalog, onHome, onBookScooter }) {
 
 function BookingRoute({ onAccount, onCatalog, onHome }) {
   const { slug } = useParams();
+  const { fleet } = useSite();
+  const scooter = fleet.find((item) => item.slug === slug) || null;
+
   return (
     <BookingPage
-      scooter={findScooterBySlug(slug)}
+      scooter={scooter}
       onAccount={onAccount}
       onCatalog={onCatalog}
       onHome={onHome}
@@ -66,30 +117,16 @@ function BookingRoute({ onAccount, onCatalog, onHome }) {
   );
 }
 
-function HardRedirect({ to }) {
-  React.useEffect(() => {
-    window.location.replace(to);
-  }, [to]);
-
-  return null;
-}
-
 function RoutedApp() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { content } = useSite();
   const page = pageFromPath(location.pathname);
+  const nav = content?.nav;
 
-  const goHome = () => {
-    navigate('/');
-  };
-
-  const goCatalog = () => {
-    navigate('/fleet');
-  };
-
-  const goAccount = () => {
-    navigate('/account');
-  };
+  const goHome = () => navigate('/');
+  const goCatalog = () => navigate('/fleet');
+  const goAccount = () => navigate('/account');
 
   const goSection = (sectionId) => {
     if (sectionId === 'top') {
@@ -100,16 +137,11 @@ function RoutedApp() {
     navigate({ pathname: '/', hash: `#${sectionId}` });
   };
 
-  const openScooter = (scooter) => {
-    navigate(`/fleet/${scooter.slug}`);
-  };
-
-  const openBooking = (scooter) => {
-    navigate(`/booking/${scooter.slug}`);
-  };
+  const openScooter = (scooter) => navigate(`/fleet/${scooter.slug}`);
+  const openBooking = (scooter) => navigate(`/booking/${scooter.slug}`);
 
   return (
-    <>
+    <AppShell>
       <ScrollManager />
 
       <Nav
@@ -151,18 +183,22 @@ function RoutedApp() {
             }}
             variant="primary"
           >
-            Book Now →
+            {nav?.bookNow}
           </Btn>
         </div>
       )}
-    </>
+    </AppShell>
   );
 }
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <RoutedApp />
-    </BrowserRouter>
+    <SiteProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <RoutedApp />
+        </BrowserRouter>
+      </AuthProvider>
+    </SiteProvider>
   );
 }
