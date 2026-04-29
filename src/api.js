@@ -25,11 +25,13 @@ async function parseJson(response) {
 }
 
 export async function apiRequest(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const isJsonBody = options.body && !(options.body instanceof FormData);
   const response = await fetch(buildApiUrl(path), {
     ...options,
     headers: {
       Accept: 'application/json',
-      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(isJsonBody ? { 'Content-Type': 'application/json' } : {}),
       ...(options.headers || {}),
     },
   });
