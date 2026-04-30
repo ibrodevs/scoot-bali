@@ -18,16 +18,14 @@ function renderStatValue(value, color) {
 
 export function ScooterCard({ scooter, onOpenScooter }) {
   const { content } = useSite();
-  const [hov, setHov] = React.useState(false);
   const handle = () => onOpenScooter(scooter);
 
   return (
-    <div onClick={handle} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+    <div onClick={handle} className="scoot-card"
       style={{
         background: C.white, borderRadius: 18, overflow: 'hidden', cursor: 'pointer',
-        border: `1px solid ${hov ? 'rgba(0,0,0,0.1)' : C.gray200}`,
-        boxShadow: hov ? '0 24px 64px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.04)',
-        transform: hov ? 'translateY(-6px)' : 'none',
+        border: `1px solid ${C.gray200}`,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
         transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
       }}>
       <div style={{ position: 'relative' }}>

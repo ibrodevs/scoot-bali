@@ -295,21 +295,20 @@ export function FlagMark({ value, size = 20, style }) {
 }
 
 export function Btn({ children, variant = 'primary', size = 'md', onClick, disabled, fullWidth, style }) {
-  const [hov, setHov] = React.useState(false);
   const sizes = { sm: '8px 18px', md: '12px 26px', lg: '15px 36px', xl: '18px 48px' };
   const fSizes = { sm: 13, md: 14, lg: 15, xl: 17 };
   const vars = {
-    primary: { bg: hov ? '#e6c200' : C.gold, color: C.black, border: 'none', shadow: hov ? '0 8px 24px rgba(255,215,0,0.4)' : '0 4px 12px rgba(255,215,0,0.2)' },
-    dark: { bg: hov ? '#222' : C.black, color: C.white, border: 'none', shadow: hov ? '0 8px 24px rgba(0,0,0,0.3)' : 'none' },
-    outline: { bg: hov ? C.black : 'transparent', color: hov ? C.white : C.black, border: `1.5px solid ${C.black}`, shadow: 'none' },
-    ghost: { bg: hov ? C.gray100 : 'transparent', color: C.gray700, border: `1.5px solid ${C.gray300}`, shadow: 'none' },
-    'outline-white': { bg: hov ? 'rgba(255,255,255,0.1)' : 'transparent', color: C.white, border: '1.5px solid rgba(255,255,255,0.4)', shadow: 'none' },
+    primary: { bg: C.gold, color: C.black, border: 'none', shadow: '0 4px 12px rgba(255,215,0,0.2)' },
+    dark: { bg: C.black, color: C.white, border: 'none', shadow: 'none' },
+    outline: { bg: 'transparent', color: C.black, border: `1.5px solid ${C.black}`, shadow: 'none' },
+    ghost: { bg: 'transparent', color: C.gray700, border: `1.5px solid ${C.gray300}`, shadow: 'none' },
+    'outline-white': { bg: 'transparent', color: C.white, border: '1.5px solid rgba(255,255,255,0.4)', shadow: 'none' },
   };
   const v = vars[variant] || vars.primary;
   return (
     <button
       onClick={onClick} disabled={disabled}
-      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      className={`scoot-btn scoot-btn--${variant}`}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         padding: sizes[size], fontSize: fSizes[size], fontWeight: 600,
@@ -318,7 +317,6 @@ export function Btn({ children, variant = 'primary', size = 'md', onClick, disab
         boxShadow: v.shadow, borderRadius: 10,
         cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
         transition: 'all 0.22s cubic-bezier(0.4,0,0.2,1)',
-        transform: hov && !disabled ? 'translateY(-1px)' : 'none',
         width: fullWidth ? '100%' : 'auto',
         whiteSpace: 'nowrap',
         ...style,
