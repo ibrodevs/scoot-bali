@@ -426,7 +426,7 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
                 </div>
 
                 <div style={{ marginBottom: 28 }}>
-                  <h3 style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 20, color: C.black, margin: '0 0 12px', letterSpacing: '-0.02em' }}>{booking?.promoTitle || 'Promo code'}</h3>
+                  <h3 style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 20, color: C.black, margin: '0 0 12px', letterSpacing: '-0.02em' }}>{booking?.promoTitle || 'Promo code'} <span style={{ fontFamily: 'Inter', fontWeight: 400, fontSize: 13, color: C.gray500 }}>({booking?.optional || 'optional'})</span></h3>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <input
                       type="text"
@@ -439,7 +439,7 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
                       variant="outline"
                       onClick={async () => {
                         if (!promoState.code.trim()) {
-                          setPromoState((current) => ({ ...current, valid: false, message: booking?.promoEmpty || 'Enter a promo code first.' }));
+                          setPromoState({ code: '', message: '', valid: null, discount: 0 });
                           return;
                         }
                         try {
