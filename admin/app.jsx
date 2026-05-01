@@ -26,14 +26,32 @@ const A = {
   orangeBg: '#fff7ed',
 };
 
+const UI = {
+  requestFailed: 'Не удалось выполнить запрос',
+  loading: 'Загрузка…',
+  loadingAdminData: 'Загружаю данные админки…',
+  typeMessage: 'Введите сообщение…',
+  sending: 'Отправка…',
+  send: 'Отправить',
+  authHint: 'Авторизация через backend JWT',
+  signInTitle: 'Вход в админку',
+  signInBody: 'Панель работает с живыми данными backend. Используйте аккаунт с правами администратора.',
+  signingIn: 'Входим…',
+  signIn: 'Войти',
+  signOut: 'Выйти',
+  refreshing: 'Обновляю…',
+  refresh: 'Обновить',
+  viewWebsite: 'Открыть сайт',
+};
+
 const NAV = [
-  { id: 'overview', icon: '📊', label: 'Overview' },
-  { id: 'bookings', icon: '📋', label: 'Bookings' },
-  { id: 'fleet', icon: '🛵', label: 'Fleet' },
-  { id: 'calendar', icon: '📅', label: 'Calendar' },
+  { id: 'overview', icon: '📊', label: 'Обзор' },
+  { id: 'bookings', icon: '📋', label: 'Бронирования' },
+  { id: 'fleet', icon: '🛵', label: 'Парк' },
+  { id: 'calendar', icon: '📅', label: 'Календарь' },
   { id: 'crm', icon: '👥', label: 'CRM' },
-  { id: 'analytics', icon: '📈', label: 'Analytics' },
-  { id: 'support', icon: '💬', label: 'Support' },
+  { id: 'analytics', icon: '📈', label: 'Аналитика' },
+  { id: 'support', icon: '💬', label: 'Поддержка' },
 ];
 
 function loadStoredSession() {
@@ -74,7 +92,7 @@ async function parseJson(response) {
       data?.error ||
       data?.detail ||
       (typeof data === 'string' ? data : '') ||
-      `Request failed with status ${response.status}`;
+      `${UI.requestFailed} (${response.status})`;
     throw new Error(message);
   }
 
@@ -157,7 +175,7 @@ function Badge({ children, color = 'default' }) {
   );
 }
 
-function Button({ children, variant = 'primary', size = 'sm', onClick, style, disabled, type = 'button' }) {
+function Button({ children, variant = 'primary', size = 'sm', onClick, style, disabled, type = 'button', className }) {
   const vars = {
     primary: { background: A.gold, color: A.black, border: 'none' },
     dark: { background: A.black, color: A.white, border: 'none' },
@@ -169,6 +187,7 @@ function Button({ children, variant = 'primary', size = 'sm', onClick, style, di
 
   return (
     <button
+      className={className}
       type={type}
       onClick={onClick}
       disabled={disabled}
@@ -195,12 +214,12 @@ function Button({ children, variant = 'primary', size = 'sm', onClick, style, di
 
 function SectionHeader({ title, subtitle, action }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20, gap: 16 }}>
+    <div className="admin-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20, gap: 16 }}>
       <div>
         <h2 style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 22, letterSpacing: '-0.03em', color: A.black, marginBottom: 3 }}>{title}</h2>
         {subtitle ? <p style={{ fontFamily: 'Inter', fontSize: 13, color: A.g500 }}>{subtitle}</p> : null}
       </div>
-      {action}
+      {action ? <div className="admin-section-action">{action}</div> : null}
     </div>
   );
 }
@@ -227,6 +246,280 @@ function Panel({ children, style }) {
     <div style={{ background: A.white, borderRadius: 14, border: `1px solid ${A.g200}`, ...style }}>
       {children}
     </div>
+  );
+}
+
+function AdminResponsiveStyles() {
+  return (
+    <style>{`
+      .admin-shell {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        height: 100vh;
+        overflow: hidden;
+      }
+      .admin-view {
+        overflow-y: auto;
+        height: 100%;
+        padding: 28px 32px;
+      }
+      .admin-grid {
+        display: grid;
+        gap: 16px;
+      }
+      .admin-grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .admin-grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .admin-grid-2 {
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      }
+      .admin-grid-2-wide {
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+      }
+      .admin-support-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        height: 100%;
+      }
+      .admin-table-scroll {
+        overflow-x: auto;
+      }
+      .admin-table-seven {
+        min-width: 980px;
+      }
+      .admin-calendar-grid {
+        min-width: 980px;
+      }
+      .admin-mobile-nav-toggle {
+        display: none;
+      }
+      .admin-mobile-only {
+        display: none;
+      }
+      .admin-overview-booking-row {
+        display: grid;
+        grid-template-columns: 1.1fr 1.3fr 0.9fr 0.9fr;
+        gap: 12px;
+        align-items: center;
+      }
+      .admin-booking-card {
+        display: grid;
+        gap: 16px;
+      }
+      .admin-booking-summary {
+        text-align: right;
+      }
+      .admin-support-list {
+        border-right: 1px solid ${A.g200};
+        background: ${A.white};
+        overflow-y: auto;
+      }
+      .admin-support-chat {
+        display: flex;
+        flex-direction: column;
+        background: ${A.g100};
+      }
+      .admin-support-chat-header {
+        padding: 16px 24px;
+        background: ${A.white};
+        border-bottom: 1px solid ${A.g200};
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      .admin-support-chat-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .admin-support-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .admin-support-composer {
+        padding: 16px 24px;
+        background: ${A.white};
+        border-top: 1px solid ${A.g200};
+      }
+      .admin-support-composer-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+      }
+      .admin-message-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+      }
+      .admin-message-bubble-wrap {
+        max-width: 74%;
+      }
+      @media (max-width: 1100px) {
+        .admin-grid-4,
+        .admin-grid-3 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 900px) {
+        body {
+          overflow: auto;
+        }
+        .admin-shell {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+          height: auto;
+          min-height: 100vh;
+        }
+        .admin-sidebar {
+          overflow: visible !important;
+        }
+        .admin-mobile-nav-toggle {
+          display: inline-flex;
+        }
+        .admin-sidebar-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+        }
+        .admin-sidebar-collapsible {
+          display: none;
+        }
+        .admin-sidebar-collapsible[data-open="true"] {
+          display: flex;
+          flex-direction: column;
+          max-height: min(70vh, calc(100dvh - 96px));
+          overflow: hidden;
+        }
+        .admin-sidebar-nav {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding: 12px !important;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+          min-height: 0;
+          flex: 1 1 auto;
+        }
+        .admin-sidebar-nav > div {
+          margin-bottom: 0 !important;
+          flex: 0 0 auto;
+          width: 100%;
+          white-space: normal;
+        }
+        .admin-sidebar-footer {
+          flex: 0 0 auto;
+          padding-top: 12px !important;
+        }
+        .admin-main {
+          min-width: 0;
+        }
+        .admin-topbar {
+          height: auto !important;
+          padding: 16px !important;
+          flex-direction: column;
+          align-items: flex-start !important;
+        }
+        .admin-topbar-actions {
+          width: 100%;
+          justify-content: stretch;
+          flex-wrap: wrap;
+        }
+        .admin-view {
+          padding: 20px 16px;
+        }
+        .admin-section-header {
+          flex-direction: column;
+          align-items: stretch !important;
+        }
+        .admin-section-action,
+        .admin-section-action > * {
+          width: 100%;
+        }
+        .admin-overview-booking-row {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+        .admin-booking-card {
+          gap: 18px;
+        }
+        .admin-booking-summary {
+          text-align: left;
+        }
+        .admin-booking-summary button {
+          width: 100%;
+        }
+        .admin-support-layout {
+          min-height: calc(100vh - 160px);
+        }
+        .admin-support-list,
+        .admin-support-chat {
+          min-height: 100%;
+        }
+        .admin-support-chat-header {
+          padding: 14px 16px;
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .admin-support-chat-actions {
+          width: 100%;
+          flex-wrap: wrap;
+        }
+        .admin-support-chat-actions > * {
+          flex: 1 1 140px;
+        }
+        .admin-support-messages {
+          padding: 16px;
+        }
+        .admin-message-bubble-wrap {
+          max-width: calc(100% - 42px);
+        }
+        .admin-support-composer {
+          padding: 16px;
+        }
+        .admin-support-composer-row {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .admin-support-composer-row > * {
+          width: 100%;
+        }
+        .admin-mobile-only {
+          display: inline-flex;
+        }
+        .admin-grid-2,
+        .admin-grid-2-wide,
+        .admin-grid-4,
+        .admin-grid-3,
+        .admin-support-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 640px) {
+        .admin-grid-4,
+        .admin-grid-3 {
+          grid-template-columns: 1fr;
+        }
+        .admin-view {
+          padding: 16px 12px;
+        }
+        .admin-topbar-actions > * {
+          width: 100%;
+        }
+        .admin-support-layout {
+          min-height: calc(100vh - 176px);
+        }
+      }
+    `}</style>
   );
 }
 
@@ -295,7 +588,7 @@ function Textarea(props) {
   );
 }
 
-function LoadingState({ label = 'Loading…' }) {
+function LoadingState({ label = UI.loading }) {
   return (
     <Panel style={{ padding: 28 }}>
       <div style={{ fontFamily: 'Inter', fontSize: 14, color: A.g500 }}>{label}</div>
@@ -419,6 +712,25 @@ function addDays(date, amount) {
   return copy;
 }
 
+function useMediaQuery(query) {
+  const getMatches = React.useCallback(() => window.matchMedia(query).matches, [query]);
+  const [matches, setMatches] = React.useState(getMatches);
+
+  React.useEffect(() => {
+    const media = window.matchMedia(query);
+    const onChange = () => setMatches(media.matches);
+    onChange();
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    }
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, [query]);
+
+  return matches;
+}
+
 function OverviewView({ data, onOpenView }) {
   const bookings = data.bookings;
   const payments = data.payments;
@@ -459,15 +771,15 @@ function OverviewView({ data, onOpenView }) {
   const maxRevenue = Math.max(...monthlyRevenue.map((item) => item.amount), 1);
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+    <div className="admin-view">
+      <div className="admin-grid admin-grid-4" style={{ marginBottom: 28 }}>
         <StatCard label="Revenue" value={formatMoney(revenue.revenue)} helper={`${revenue.bookings_count} paid bookings`} icon="💰" />
         <StatCard label="Active Bookings" value={String(activeBookings.length)} helper="Current pipeline" icon="📋" />
         <StatCard label="Fleet Utilization" value={`${utilization}%`} helper={`${scooters.length} vehicles`} icon="🛵" />
         <StatCard label="Average Booking" value={formatMoney(averageBookingValue)} helper={`${payments.length} payments tracked`} icon="⭐" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16, marginBottom: 28 }}>
+      <div className="admin-grid admin-grid-2-wide" style={{ marginBottom: 28 }}>
         <Panel style={{ padding: 24 }}>
           <SectionHeader
             title="Revenue"
@@ -516,7 +828,7 @@ function OverviewView({ data, onOpenView }) {
         </Panel>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 16, marginBottom: 28 }}>
+      <div className="admin-grid admin-grid-2" style={{ marginBottom: 28 }}>
         <Panel style={{ overflow: 'hidden' }}>
           <div style={{ padding: '18px 20px', borderBottom: `1px solid ${A.g200}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
@@ -527,7 +839,7 @@ function OverviewView({ data, onOpenView }) {
           </div>
           <div>
             {bookings.slice(0, 6).map((item) => (
-              <div key={item.id} style={{ padding: '14px 20px', borderBottom: `1px solid ${A.g200}`, display: 'grid', gridTemplateColumns: '1.1fr 1.3fr 0.9fr 0.9fr', gap: 12, alignItems: 'center' }}>
+              <div key={item.id} className="admin-overview-booking-row" style={{ padding: '14px 20px', borderBottom: `1px solid ${A.g200}` }}>
                 <div>
                   <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 13, color: A.black }}>#{item.order_number}</div>
                   <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>{formatShortDate(item.created_at)}</div>
@@ -576,12 +888,12 @@ function OverviewView({ data, onOpenView }) {
 
 function FleetView({ scooters, savingScooterId, onPatchScooter }) {
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div className="admin-view">
       <SectionHeader title="Fleet Management" subtitle={`${scooters.length} vehicles from backend`} />
       {scooters.length === 0 ? (
         <EmptyState label="No scooters found." />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+        <div className="admin-grid admin-grid-3">
           {scooters.map((item) => {
             const busy = savingScooterId === item.id;
             return (
@@ -676,7 +988,7 @@ function BookingsView({ bookings, busyBookingId, onBookingAction }) {
   }
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div className="admin-view">
       <SectionHeader title="Bookings" subtitle={`${bookings.length} bookings loaded from backend`} />
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {['all', 'created', 'pending_payment', 'confirmed', 'delivery', 'active', 'completed', 'cancelled'].map((value) => (
@@ -705,7 +1017,7 @@ function BookingsView({ bookings, busyBookingId, onBookingAction }) {
         <div style={{ display: 'grid', gap: 14 }}>
           {filtered.map((item) => (
             <Panel key={item.id} style={{ padding: 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
+              <div className="admin-grid admin-grid-3 admin-booking-card" style={{ alignItems: 'start' }}>
                 <div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                     <Badge color={bookingBadgeColor(item.status)}>{item.status}</Badge>
@@ -720,7 +1032,7 @@ function BookingsView({ bookings, busyBookingId, onBookingAction }) {
                   <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.black, lineHeight: 1.6 }}>{formatDateRange(item.start_datetime, item.end_datetime)}</div>
                   <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, marginTop: 8 }}>{item.delivery_address || 'Delivery address not provided'}</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+                <div className="admin-booking-summary">
                   <div style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 20, color: A.black, marginBottom: 8 }}>{formatMoney(item.total_price)}</div>
                   <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, marginBottom: 14 }}>{item.rental_days} days · {item.payment_method}</div>
                   {actionButtons(item)}
@@ -770,9 +1082,9 @@ function CRMView({ profiles, users, bookings }) {
   const averageLtv = customerRows.length ? customerRows.reduce((sum, item) => sum + item.total, 0) / customerRows.length : 0;
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div className="admin-view">
       <SectionHeader title="CRM" subtitle="Customer profiles, segments and booking history" />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div className="admin-grid admin-grid-3" style={{ gap: 12, marginBottom: 24 }}>
         <StatCard label="Customers" value={String(customerRows.length)} helper="Client accounts with CRM data or bookings" icon="👥" />
         <StatCard label="Segmented" value={String(vipCount)} helper="Profiles assigned to a segment" icon="🏷️" />
         <StatCard label="Average LTV" value={formatMoney(averageLtv)} helper="Derived from bookings" icon="💎" />
@@ -781,7 +1093,8 @@ function CRMView({ profiles, users, bookings }) {
         <EmptyState label="No customer records available." />
       ) : (
         <Panel style={{ overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 0.8fr 0.8fr 0.8fr 0.9fr 1fr', gap: 12, padding: '12px 20px', borderBottom: `1px solid ${A.g200}`, background: A.g100 }}>
+          <div className="admin-table-scroll">
+          <div className="admin-table-seven" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 0.8fr 0.8fr 0.8fr 0.9fr 1fr', gap: 12, padding: '12px 20px', borderBottom: `1px solid ${A.g200}`, background: A.g100 }}>
             {['Customer', 'Email / Phone', 'Segment', 'Bookings', 'LTV', 'Notes', 'Last Booking'].map((label) => (
               <div key={label} style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.g500 }}>
                 {label}
@@ -789,7 +1102,7 @@ function CRMView({ profiles, users, bookings }) {
             ))}
           </div>
           {customerRows.map((item) => (
-            <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 0.8fr 0.8fr 0.8fr 0.9fr 1fr', gap: 12, padding: '14px 20px', borderBottom: `1px solid ${A.g200}`, alignItems: 'center' }}>
+            <div className="admin-table-seven" key={item.id} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 0.8fr 0.8fr 0.8fr 0.9fr 1fr', gap: 12, padding: '14px 20px', borderBottom: `1px solid ${A.g200}`, alignItems: 'center' }}>
               <div>
                 <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 14, color: A.black }}>{item.name}</div>
               </div>
@@ -804,6 +1117,7 @@ function CRMView({ profiles, users, bookings }) {
               <div style={{ fontFamily: 'Inter', fontSize: 13, color: A.g500 }}>{formatDateTime(item.last)}</div>
             </div>
           ))}
+          </div>
         </Panel>
       )}
     </div>
@@ -823,7 +1137,7 @@ function CalendarView({ bookings, scooters }) {
     }));
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div className="admin-view">
       <SectionHeader
         title="Occupancy Calendar"
         subtitle={`${formatShortDate(weekStart)} – ${formatShortDate(addDays(weekStart, 6))}`}
@@ -839,7 +1153,8 @@ function CalendarView({ bookings, scooters }) {
         <EmptyState label="No fleet records available." />
       ) : (
         <Panel style={{ overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '240px repeat(7, 1fr)', borderBottom: `1px solid ${A.g200}` }}>
+          <div className="admin-table-scroll">
+          <div className="admin-calendar-grid" style={{ display: 'grid', gridTemplateColumns: '240px repeat(7, 1fr)', borderBottom: `1px solid ${A.g200}` }}>
             <div style={{ padding: '14px 16px', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: A.g500 }}>
               Vehicle
             </div>
@@ -853,7 +1168,7 @@ function CalendarView({ bookings, scooters }) {
             ))}
           </div>
           {scooters.map((scooter) => (
-            <div key={scooter.id} style={{ display: 'grid', gridTemplateColumns: '240px repeat(7, 1fr)', borderBottom: `1px solid ${A.g200}`, minHeight: 74 }}>
+            <div className="admin-calendar-grid" key={scooter.id} style={{ display: 'grid', gridTemplateColumns: '240px repeat(7, 1fr)', borderBottom: `1px solid ${A.g200}`, minHeight: 74 }}>
               <div style={{ padding: '14px 16px' }}>
                 <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 14, color: A.black }}>{scooter.title}</div>
                 <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>{scooter.type} · {scooter.engine_capacity}cc</div>
@@ -879,6 +1194,7 @@ function CalendarView({ bookings, scooters }) {
               })}
             </div>
           ))}
+          </div>
         </Panel>
       )}
     </div>
@@ -911,15 +1227,15 @@ function AnalyticsView({ revenue, funnel, bookings }) {
   const maxZone = Math.max(...topZones.map((item) => item.count), 1);
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', padding: '28px 32px' }}>
+    <div className="admin-view">
       <SectionHeader title="Analytics" subtitle={revenue.period || 'Live backend analytics'} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="admin-grid admin-grid-4" style={{ gap: 14, marginBottom: 24 }}>
         <StatCard label="Gross Revenue" value={formatMoney(revenue.revenue)} helper={`${revenue.bookings_count} paid bookings`} icon="💰" />
         <StatCard label="Visitors" value={String(funnel.visitors || 0)} helper="Analytics events" icon="👀" />
         <StatCard label="Checkout Starts" value={String(funnel.checkout_started || 0)} helper={`${funnel.checkout_conversion_rate || 0}% from visitors`} icon="🧾" />
         <StatCard label="Conversion" value={`${funnel.conversion_rate || 0}%`} helper={`${funnel.bookings_created || 0} bookings created`} icon="📈" />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
+      <div className="admin-grid admin-grid-2">
         <Panel style={{ padding: 24 }}>
           <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, color: A.black, marginBottom: 4 }}>Vehicle Performance</div>
           <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500, marginBottom: 20 }}>Revenue contribution by scooter</div>
@@ -976,11 +1292,21 @@ function AnalyticsView({ revenue, funnel, bookings }) {
 
 function SupportView({ threads, messages, quickReplies, activeThreadId, onSelectThread, onSendReply, onUpdateThreadStatus, sendingReply }) {
   const activeThread = threads.find((item) => item.id === activeThreadId) || threads[0] || null;
+  const isMobile = useMediaQuery('(max-width: 900px)');
   const [draft, setDraft] = React.useState('');
+  const [showThreadList, setShowThreadList] = React.useState(!activeThreadId);
 
   React.useEffect(() => {
     setDraft('');
   }, [activeThreadId]);
+
+  React.useEffect(() => {
+    if (!isMobile) {
+      setShowThreadList(true);
+      return;
+    }
+    setShowThreadList(!activeThreadId);
+  }, [activeThreadId, isMobile]);
 
   function submitReply() {
     if (!activeThread || !draft.trim()) {
@@ -991,8 +1317,9 @@ function SupportView({ threads, messages, quickReplies, activeThreadId, onSelect
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '100%' }}>
-      <div style={{ borderRight: `1px solid ${A.g200}`, background: A.white, overflowY: 'auto' }}>
+    <div className="admin-support-layout">
+      {(!isMobile || showThreadList) ? (
+      <div className="admin-support-list">
         <div style={{ padding: '20px 16px', borderBottom: `1px solid ${A.g200}` }}>
           <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, color: A.black, marginBottom: 6 }}>Support Threads</div>
           <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>{threads.length} live conversations</div>
@@ -1006,7 +1333,12 @@ function SupportView({ threads, messages, quickReplies, activeThreadId, onSelect
           return (
             <div
               key={thread.id}
-              onClick={() => onSelectThread(thread.id)}
+              onClick={() => {
+                onSelectThread(thread.id);
+                if (isMobile) {
+                  setShowThreadList(false);
+                }
+              }}
               style={{
                 padding: '14px 16px',
                 borderBottom: `1px solid ${A.g200}`,
@@ -1027,35 +1359,38 @@ function SupportView({ threads, messages, quickReplies, activeThreadId, onSelect
           );
         })}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', background: A.g100 }}>
+      ) : null}
+      {(!isMobile || !showThreadList) ? (
+      <div className="admin-support-chat">
         {!activeThread ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontSize: 14, color: A.g500 }}>
             Pick a conversation to start.
           </div>
         ) : (
           <>
-            <div style={{ padding: '16px 24px', background: A.white, borderBottom: `1px solid ${A.g200}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div className="admin-support-chat-header">
               <div>
                 <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, color: A.black }}>{activeThread.title || 'Support Thread'}</div>
                 <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>{(activeThread.participants || []).map((item) => item.user?.email).filter(Boolean).join(', ')}</div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="admin-support-chat-actions">
+                {isMobile ? <Button variant="ghost" onClick={() => setShowThreadList(true)}>← Threads</Button> : null}
                 <Button variant="outline" onClick={() => onUpdateThreadStatus(activeThread.id, 'open')}>Reopen</Button>
                 <Button variant="dark" onClick={() => onUpdateThreadStatus(activeThread.id, 'closed')}>Close Thread</Button>
               </div>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="admin-support-messages">
               {messages.length === 0 ? (
                 <div style={{ fontFamily: 'Inter', fontSize: 14, color: A.g500 }}>No messages in this thread.</div>
               ) : messages.map((message) => {
                 const sender = message.sender || {};
                 const isAdmin = ['admin', 'manager', 'staff'].includes(sender.role);
                 return (
-                  <div key={message.id} style={{ display: 'flex', flexDirection: isAdmin ? 'row-reverse' : 'row', gap: 10, alignItems: 'flex-end' }}>
+                  <div key={message.id} className="admin-message-row" style={{ flexDirection: isAdmin ? 'row-reverse' : 'row' }}>
                     <div style={{ width: 32, height: 32, background: isAdmin ? A.black : A.gold, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora', fontWeight: 800, fontSize: 12, color: isAdmin ? A.white : A.black }}>
                       {initials(sender.full_name || sender.email)}
                     </div>
-                    <div style={{ maxWidth: '74%' }}>
+                    <div className="admin-message-bubble-wrap">
                       <div style={{ background: isAdmin ? A.black : A.white, borderRadius: isAdmin ? '16px 4px 16px 16px' : '4px 16px 16px 16px', padding: '12px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                         <div style={{ fontFamily: 'Inter', fontSize: 14, lineHeight: 1.6, color: isAdmin ? A.white : A.black }}>{message.text}</div>
                       </div>
@@ -1065,7 +1400,7 @@ function SupportView({ threads, messages, quickReplies, activeThreadId, onSelect
                 );
               })}
             </div>
-            <div style={{ padding: '16px 24px', background: A.white, borderTop: `1px solid ${A.g200}` }}>
+            <div className="admin-support-composer">
               {quickReplies.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                   {quickReplies.slice(0, 4).map((reply) => (
@@ -1073,16 +1408,17 @@ function SupportView({ threads, messages, quickReplies, activeThreadId, onSelect
                   ))}
                 </div>
               ) : null}
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-                <Textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Type a message..." style={{ minHeight: 90 }} />
+              <div className="admin-support-composer-row">
+                <Textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={UI.typeMessage} style={{ minHeight: 90 }} />
                 <Button variant="primary" onClick={submitReply} disabled={sendingReply || !draft.trim()} style={{ height: 46 }}>
-                  {sendingReply ? 'Sending…' : 'Send'}
+                  {sendingReply ? UI.sending : UI.send}
                 </Button>
               </div>
             </div>
           </>
         )}
       </div>
+      ) : null}
     </div>
   );
 }
@@ -1095,12 +1431,12 @@ function LoginView({ form, setForm, error, loading, onSubmit }) {
           <div style={{ width: 36, height: 36, background: A.gold, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora', fontWeight: 900, fontSize: 16, color: A.black }}>S</div>
           <div>
             <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 18, color: A.black }}>Scoot Bali Admin</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>Authenticate with backend JWT</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: A.g500 }}>{UI.authHint}</div>
           </div>
         </div>
-        <h1 style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 34, letterSpacing: '-0.04em', color: A.black, marginBottom: 10 }}>Admin sign in</h1>
+        <h1 style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 34, letterSpacing: '-0.04em', color: A.black, marginBottom: 10 }}>{UI.signInTitle}</h1>
         <p style={{ fontFamily: 'Inter', fontSize: 15, lineHeight: 1.7, color: A.g500, marginBottom: 24 }}>
-          This panel now reads live data from backend endpoints. Use an account with admin access.
+          {UI.signInBody}
         </p>
         <div style={{ display: 'grid', gap: 16 }}>
           <Field label="Email">
@@ -1112,7 +1448,7 @@ function LoginView({ form, setForm, error, loading, onSubmit }) {
         </div>
         <ErrorBanner error={error} />
         <Button variant="primary" size="md" onClick={onSubmit} disabled={loading} style={{ width: '100%', marginTop: 8 }}>
-          {loading ? 'Signing in…' : 'Sign in'}
+          {loading ? UI.signingIn : UI.signIn}
         </Button>
       </Panel>
     </div>
@@ -1123,6 +1459,7 @@ function AdminApp() {
   const [session, setSession] = React.useState(loadStoredSession);
   const [profile, setProfile] = React.useState(null);
   const [view, setView] = React.useState('overview');
+  const isMobile = useMediaQuery('(max-width: 900px)');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [loginForm, setLoginForm] = React.useState({ email: '', password: '' });
@@ -1131,6 +1468,7 @@ function AdminApp() {
   const [sendingReply, setSendingReply] = React.useState(false);
   const [activeThreadId, setActiveThreadId] = React.useState(null);
   const [threadMessages, setThreadMessages] = React.useState([]);
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [data, setData] = React.useState({
     bookings: [],
     scooters: [],
@@ -1246,6 +1584,12 @@ function AdminApp() {
     }
     loadSupportMessages(activeThreadId, session.access);
   }, [activeThreadId, session?.access, view]);
+
+  React.useEffect(() => {
+    if (!isMobile) {
+      setMobileNavOpen(false);
+    }
+  }, [isMobile]);
 
   React.useEffect(() => {
     if (!session?.access || view !== 'support') {
@@ -1426,28 +1770,46 @@ function AdminApp() {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', height: '100vh', overflow: 'hidden' }}>
-      <div style={{ background: A.sidebar, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="admin-shell">
+      <AdminResponsiveStyles />
+      <div className="admin-sidebar" style={{ background: A.sidebar, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 30, height: 30, background: A.gold, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontFamily: 'Sora', fontWeight: 900, fontSize: 15, color: A.black }}>S</span>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, letterSpacing: '-0.03em', color: A.white }}>
-                SCOOT <span style={{ color: A.gold }}>BALI</span>
+          <div className="admin-sidebar-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 30, height: 30, background: A.gold, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontFamily: 'Sora', fontWeight: 900, fontSize: 15, color: A.black }}>S</span>
               </div>
-              <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em', marginTop: 1 }}>
-                ADMIN PANEL
+              <div>
+                <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, letterSpacing: '-0.03em', color: A.white }}>
+                  SCOOT <span style={{ color: A.gold }}>BALI</span>
+                </div>
+                <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em', marginTop: 1 }}>
+                  ADMIN PANEL
+                </div>
               </div>
             </div>
+            {isMobile ? (
+              <Button
+                variant="outline"
+                onClick={() => setMobileNavOpen((current) => !current)}
+                style={{ color: A.white, borderColor: 'rgba(255,255,255,0.16)' }}
+              >
+                {mobileNavOpen ? 'Close' : 'Menu'}
+              </Button>
+            ) : null}
           </div>
         </div>
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '16px 10px' }}>
+        <div className="admin-sidebar-collapsible" data-open={!isMobile || mobileNavOpen}>
+        <nav className="admin-sidebar-nav" style={{ flex: 1, overflowY: 'auto', padding: '16px 10px' }}>
           {NAV.map((item) => (
             <div
               key={item.id}
-              onClick={() => setView(item.id)}
+              onClick={() => {
+                setView(item.id);
+                if (isMobile) {
+                  setMobileNavOpen(false);
+                }
+              }}
               style={{
                 padding: '11px 14px',
                 borderRadius: 10,
@@ -1466,7 +1828,7 @@ function AdminApp() {
             </div>
           ))}
         </nav>
-        <div style={{ padding: '16px 14px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="admin-sidebar-footer" style={{ padding: '16px 14px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ width: 36, height: 36, background: 'rgba(255,215,0,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora', fontWeight: 800, fontSize: 14, color: A.gold }}>
               {initials(profile?.full_name || profile?.email)}
@@ -1481,26 +1843,27 @@ function AdminApp() {
             </div>
           </div>
           <Button variant="outline" onClick={handleLogout} style={{ width: '100%', color: A.white, borderColor: 'rgba(255,255,255,0.16)' }}>
-            Sign out
+            {UI.signOut}
           </Button>
+        </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: A.bg }}>
-        <div style={{ height: 56, background: A.white, borderBottom: `1px solid ${A.g200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', flexShrink: 0 }}>
-          <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, color: A.black, textTransform: 'capitalize' }}>{view}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="admin-main" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: A.bg }}>
+        <div className="admin-topbar" style={{ height: 56, background: A.white, borderBottom: `1px solid ${A.g200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', flexShrink: 0 }}>
+          <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 16, color: A.black }}>{NAV.find((item) => item.id === view)?.label || view}</div>
+          <div className="admin-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Button variant="outline" onClick={() => loadAdminData(session.access)} disabled={loading}>
-              {loading ? 'Refreshing…' : 'Refresh'}
+              {loading ? UI.refreshing : UI.refresh}
             </Button>
             <a href="../" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-              <Button variant="primary" size="md">↗ View Website</Button>
+              <Button variant="primary" size="md">↗ {UI.viewWebsite}</Button>
             </a>
           </div>
         </div>
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <ErrorBanner error={error} />
-          {loading && data.bookings.length === 0 && view !== 'support' ? <LoadingState label="Loading admin data…" /> : viewMap[view]}
+          {loading && data.bookings.length === 0 && view !== 'support' ? <LoadingState label={UI.loadingAdminData} /> : viewMap[view]}
         </div>
       </div>
     </div>

@@ -1,7 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import AccountPage from './account';
-import { AuthProvider } from './auth-context';
+import { AuthProvider, useAuth } from './auth-context';
+import { trackEvent } from './api';
 import BookingPage from './booking';
 import CatalogPage from './catalog';
 import DetailPage from './detail';
@@ -121,8 +122,13 @@ function RoutedApp() {
   const location = useLocation();
   const navigate = useNavigate();
   const { content } = useSite();
+  const auth = useAuth();
   const page = pageFromPath(location.pathname);
   const nav = content?.nav;
+
+  React.useEffect(() => {
+    trackEvent('page_view', { path: `${location.pathname}${location.hash}` }, { accessToken: auth.session?.access });
+  }, [auth.session?.access, location.hash, location.pathname]);
 
   const goHome = () => navigate('/');
   const goCatalog = () => navigate('/fleet');

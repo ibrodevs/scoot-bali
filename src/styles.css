@@ -225,7 +225,10 @@ input[type='range']::-webkit-slider-thumb {
   .booking-dates,
   .booking-addons,
   .booking-card-fields,
-  .account-layout {
+  .account-layout,
+  .account-doc-upload,
+  .account-profile-grid,
+  .account-address-form {
     grid-template-columns: 1fr !important;
   }
 
@@ -239,6 +242,19 @@ input[type='range']::-webkit-slider-thumb {
 
   .booking-payments {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .catalog-layout > div:first-child,
+  .detail-layout > div:last-child,
+  .booking-layout > div:last-child {
+    position: static !important;
+    top: auto !important;
+  }
+
+  .account-booking-card,
+  .account-ticket-layout,
+  .account-support-layout {
+    grid-template-columns: 1fr !important;
   }
 
   .site-footer__main {
@@ -285,7 +301,10 @@ input[type='range']::-webkit-slider-thumb {
   .detail-specs,
   .detail-thumbs,
   .booking-payments,
-  .site-footer__main {
+  .site-footer__main,
+  .account-doc-upload,
+  .account-profile-grid,
+  .account-address-form {
     grid-template-columns: 1fr !important;
   }
 
@@ -321,6 +340,45 @@ input[type='range']::-webkit-slider-thumb {
     align-items: stretch !important;
   }
 
+  .account-booking-card > :first-child {
+    width: 100% !important;
+  }
+
+  .account-booking-card > :first-child img,
+  .account-booking-card > :first-child > div {
+    width: 100% !important;
+  }
+
+  .account-booking-card > div:last-child > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .account-ticket-layout,
+  .account-support-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .account-ticket-actions,
+  .account-support-links {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .account-address-form button,
+  .account-doc-upload button,
+  .account-profile-actions button {
+    width: 100% !important;
+  }
+
+  .booking-success-actions {
+    flex-direction: column !important;
+  }
+
+  .booking-confirmation-card {
+    padding: 40px 20px !important;
+  }
+
   .home-hero h1 {
     font-size: clamp(42px, 15vw, 64px) !important;
   }
@@ -329,5 +387,10 @@ input[type='range']::-webkit-slider-thumb {
   .home-cta__actions button,
   .site-footer__bottom {
     width: 100%;
+  }
+
+  .catalog-grid a[style*='grid-column'],
+  .catalog-grid > a {
+    grid-column: auto !important;
   }
 }

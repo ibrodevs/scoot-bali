@@ -90,8 +90,24 @@ export function FAQBlock() {
 }
 
 export default function HomePage({ onCatalog, onOpenScooter }) {
-  const { content, featuredFleet } = useSite();
+  const { content, featuredFleet, banners, reviews, lang } = useSite();
   const home = content?.home;
+  const homeBanner = banners.find((item) => item.placement === 'home_top');
+  const reviewFallback = {
+    en: { guest: 'Guest Rider', verified: 'Verified rider' },
+    ru: { guest: 'Гость', verified: 'Проверенный райдер' },
+  }[lang] || { guest: 'Guest Rider', verified: 'Verified rider' };
+  const showcaseVehicle = featuredFleet[0] || null;
+  const liveReviews = reviews.length > 0
+    ? reviews.slice(0, 4).map((item) => ({
+      name: item.user_name || reviewFallback.guest,
+      country: reviewFallback.verified,
+      flag: '🛵',
+      rating: item.rating,
+      text: item.comment,
+      avatar: (item.user_name || 'GR').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
+    }))
+    : (home?.reviews?.items || []);
 
   return (
     <div>
@@ -151,6 +167,24 @@ export default function HomePage({ onCatalog, onOpenScooter }) {
               </div>
             ))}
           </div>
+
+          {homeBanner ? (
+            <a
+              href={homeBanner.link_url || '#'}
+              target={homeBanner.link_url ? '_blank' : undefined}
+              rel={homeBanner.link_url ? 'noreferrer' : undefined}
+              style={{
+                display: 'block',
+                marginTop: 28,
+                borderRadius: 18,
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.04)',
+              }}
+            >
+              <img src={homeBanner.image} alt={homeBanner.title} style={{ display: 'block', width: '100%', maxHeight: 220, objectFit: 'cover' }} />
+            </a>
+          ) : null}
         </div>
 
         <div style={{ position: 'absolute', bottom: 44, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
@@ -210,15 +244,29 @@ export default function HomePage({ onCatalog, onOpenScooter }) {
             ))}
           </div>
           <div style={{ position: 'relative' }}>
-            <div style={{ height: 580, background: 'linear-gradient(145deg, #0a0a0a 0%, #181818 50%, #0d0d0d 100%)', borderRadius: 24, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-                {Array.from({ length: 22 }, (_, index) => <line key={index} x1={index * 30} y1="0" x2={index * 30 - 180} y2="580" stroke="rgba(255,255,255,0.022)" strokeWidth="18" />)}
-              </svg>
-              <div style={{ textAlign: 'center', position: 'relative' }}>
-                <div style={{ fontFamily: 'Inter', fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>{home?.why?.lifestyleEyebrow}</div>
-                <div style={{ fontFamily: 'Sora', fontSize: 16, fontWeight: 500, color: 'rgba(255,255,255,0.4)' }}>{home?.why?.lifestyleLabel}</div>
-              </div>
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 240, background: 'linear-gradient(to top, rgba(255,215,0,0.06), transparent)' }} />
+            <div style={{ position: 'relative', height: 580, borderRadius: 24, overflow: 'hidden', background: C.black }}>
+              {showcaseVehicle ? (
+                <>
+                  <ScooterImg scooter={showcaseVehicle} height={580} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(6,6,8,0.14) 0%, rgba(6,6,8,0.42) 48%, rgba(6,6,8,0.86) 100%)' }} />
+                  <div style={{ position: 'absolute', left: 28, right: 28, bottom: 28 }}>
+                    <div style={{ fontFamily: 'Inter', fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.62)', marginBottom: 10 }}>{home?.why?.lifestyleEyebrow}</div>
+                    <div style={{ fontFamily: 'Sora', fontSize: 28, fontWeight: 700, color: C.white, letterSpacing: '-0.03em', marginBottom: 8 }}>{showcaseVehicle.name}</div>
+                    <div style={{ fontFamily: 'Inter', fontSize: 14, lineHeight: 1.7, color: 'rgba(255,255,255,0.72)', maxWidth: 420 }}>{showcaseVehicle.description || home?.why?.lifestyleLabel}</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                    {Array.from({ length: 22 }, (_, index) => <line key={index} x1={index * 30} y1="0" x2={index * 30 - 180} y2="580" stroke="rgba(255,255,255,0.022)" strokeWidth="18" />)}
+                  </svg>
+                  <div style={{ textAlign: 'center', position: 'relative' }}>
+                    <div style={{ fontFamily: 'Inter', fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>{home?.why?.lifestyleEyebrow}</div>
+                    <div style={{ fontFamily: 'Sora', fontSize: 16, fontWeight: 500, color: 'rgba(255,255,255,0.4)' }}>{home?.why?.lifestyleLabel}</div>
+                  </div>
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 240, background: 'linear-gradient(to top, rgba(255,215,0,0.06), transparent)' }} />
+                </>
+              )}
             </div>
             <div style={{ position: 'absolute', bottom: -20, right: -20, background: C.gold, borderRadius: 16, padding: '20px 24px', boxShadow: '0 12px 40px rgba(255,215,0,0.3)' }}>
               <div style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 28, color: C.black, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -237,7 +285,7 @@ export default function HomePage({ onCatalog, onOpenScooter }) {
           <h2 style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 52, letterSpacing: '-0.04em', color: C.white, margin: 0 }}>{home?.reviews?.title}</h2>
         </div>
         <div className="home-testimonials__grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
-          {(home?.reviews?.items || []).map((item) => (
+          {liveReviews.map((item) => (
             <div key={`${item.name}-${item.country}`} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, padding: '32px 28px' }}>
               <Stars rating={item.rating} size={15} />
               <p style={{ fontFamily: 'Inter', fontSize: 14, lineHeight: 1.75, color: 'rgba(255,255,255,0.7)', margin: '18px 0 24px' }}>"{item.text}"</p>

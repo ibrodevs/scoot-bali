@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from './auth-context';
-import { apiRequest, authRequest } from './api';
+import { apiRequest, authRequest, trackEvent } from './api';
 import { useSite } from './site-context';
 import { Badge, Btn, C, Divider, FormField, Icon, ScooterImg } from './ui';
 
@@ -25,13 +25,14 @@ function paymentStatusLabel(status, bookingContent, accountContent) {
 }
 
 export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
-  const { addons, deliveryZones, content, lang } = useSite();
+  const { addons, deliveryZones, deliverySlots, content, lang } = useSite();
   const auth = useAuth();
+  const availableSlots = deliverySlots.length > 0 ? deliverySlots : ['09:00'];
   const [step, setStep] = React.useState(1);
   const [data, setData] = React.useState({
     checkIn: '',
     checkOut: '',
-    time: '09:00',
+    time: availableSlots[0],
     zone: '',
     address: '',
     addons: [],
@@ -45,7 +46,9 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
     cvv: '',
   });
   const [quote, setQuote] = React.useState(null);
+  const [pricingPreview, setPricingPreview] = React.useState(null);
   const [quoteError, setQuoteError] = React.useState('');
+  const [promoState, setPromoState] = React.useState({ code: '', message: '', valid: null, discount: 0 });
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState('');
   const [done, setDone] = React.useState(null);
@@ -55,6 +58,15 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
   const common = content?.common;
   const detail = content?.detail;
   const selectedZone = deliveryZones.find((zone) => zone.name === data.zone) || null;
+
+  React.useEffect(() => {
+    setData((current) => {
+      if (availableSlots.includes(current.time)) {
+        return current;
+      }
+      return { ...current, time: availableSlots[0] };
+    });
+  }, [availableSlots]);
 
   React.useEffect(() => {
     if (auth.profile?.full_name || auth.profile?.email) {
@@ -71,35 +83,57 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
     async function calculateQuote() {
       if (!scooter || !data.checkIn || !data.checkOut) {
         setQuote(null);
+        setPricingPreview(null);
         setQuoteError('');
         return;
       }
 
       try {
-        const response = await apiRequest('/bookings/calculate/', {
-          method: 'POST',
-          body: JSON.stringify({
-            scooter_id: scooter.id,
-            start_datetime: buildDateTime(data.checkIn, data.time),
-            end_datetime: buildDateTime(data.checkOut, data.time),
-            delivery_address: data.address || undefined,
-            delivery_latitude: selectedZone?.latitude,
-            delivery_longitude: selectedZone?.longitude,
-            add_on_ids: data.addons,
-            payment_method: data.payment,
-            currency: 'USD',
+        const payload = {
+          scooter_id: scooter.id,
+          start_datetime: buildDateTime(data.checkIn, data.time),
+          end_datetime: buildDateTime(data.checkOut, data.time),
+          delivery_address: data.address || undefined,
+          delivery_latitude: selectedZone?.latitude,
+          delivery_longitude: selectedZone?.longitude,
+          add_on_ids: data.addons,
+          promo_code: promoState.valid ? promoState.code : undefined,
+          payment_method: data.payment,
+          currency: 'USD',
+        };
+        const [response, pricing] = await Promise.all([
+          apiRequest('/bookings/calculate/', {
+            method: 'POST',
+            body: JSON.stringify(payload),
           }),
-        });
+          apiRequest('/pricing/calculate/', {
+            method: 'POST',
+            body: JSON.stringify({
+              scooter_id: scooter.id,
+              start_date: data.checkIn,
+              end_date: data.checkOut,
+              device_type: 'web',
+            }),
+          }).catch(() => null),
+        ]);
         setQuote(response);
+        setPricingPreview(pricing);
         setQuoteError('');
       } catch (error) {
         setQuote(null);
+        setPricingPreview(null);
         setQuoteError(error.message || booking?.calculateFailed);
       }
     }
 
     calculateQuote();
-  }, [data.addons, data.address, data.checkIn, data.checkOut, data.payment, data.time, scooter, selectedZone]);
+  }, [data.addons, data.address, data.checkIn, data.checkOut, data.payment, data.time, promoState.code, promoState.valid, scooter, selectedZone]);
+
+  React.useEffect(() => {
+    if (step === 3 && scooter) {
+      trackEvent('start_checkout', { scooter_id: scooter.id }, { accessToken: auth.session?.access });
+    }
+  }, [auth.session?.access, scooter, step]);
 
   if (!scooter) {
     return (
@@ -140,6 +174,7 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
       delivery_longitude: selectedZone?.longitude,
       add_on_ids: data.addons,
       payment_method: data.payment,
+      promo_code: promoState.valid ? promoState.code : undefined,
       currency: 'USD',
     };
 
@@ -147,6 +182,7 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
       let bookingResponse;
       let paymentResponse = null;
       let createdAccount = false;
+      let eventAccessToken = auth.session?.access;
 
       if (auth.isAuthenticated) {
         bookingResponse = await authRequest('/bookings/', auth.session.access, {
@@ -173,6 +209,7 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
         await auth.setSessionFromGuest(response.auth);
         bookingResponse = response.booking;
         createdAccount = response.created_account;
+        eventAccessToken = response.auth.access;
 
         if (payload.payment_method === 'online_card') {
           paymentResponse = await auth.createPayment(response.booking.id, undefined, response.auth.access);
@@ -180,6 +217,7 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
       }
 
       setDone({ booking: bookingResponse, payment: paymentResponse, createdAccount });
+      trackEvent('booking_created', { booking_id: bookingResponse.id, scooter_id: scooter.id }, { accessToken: eventAccessToken });
     } catch (error) {
       setSubmitError(error.message || booking?.submitError || booking?.existingEmailError || 'Booking failed');
     } finally {
@@ -198,7 +236,7 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
 
     return (
       <div style={{ paddingTop: 72, minHeight: '100vh', background: C.gray100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: C.white, borderRadius: 24, padding: '72px 56px', maxWidth: 540, width: '100%', textAlign: 'center', boxShadow: '0 24px 80px rgba(0,0,0,0.1)' }}>
+        <div className="booking-confirmation-card" style={{ background: C.white, borderRadius: 24, padding: '72px 56px', maxWidth: 540, width: '100%', textAlign: 'center', boxShadow: '0 24px 80px rgba(0,0,0,0.1)' }}>
           <div style={{ width: 88, height: 88, background: C.gold, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 28px', boxShadow: '0 12px 40px rgba(255,215,0,0.4)' }}>
             <Icon name="check" size={40} color={C.black} strokeWidth={2.2} />
           </div>
@@ -249,7 +287,7 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div className="booking-success-actions" style={{ display: 'flex', gap: 12 }}>
             <Btn variant="dark" fullWidth onClick={onAccount}>{content?.account?.bookings}</Btn>
             <Btn variant="outline" fullWidth onClick={onHome}>{detail?.breadcrumbs?.home}</Btn>
           </div>
@@ -296,13 +334,31 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
                 <FormField label={booking?.deliveryTime} style={{ maxWidth: 200 }}>
                   <select value={data.time} onChange={(event) => setData((current) => ({ ...current, time: event.target.value }))}
                     style={{ width: '100%', padding: '13px 16px', border: `1.5px solid ${C.gray300}`, borderRadius: 10, fontFamily: 'Inter', fontSize: 15, outline: 'none', background: C.white, cursor: 'pointer' }}>
-                    {['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'].map((time) => <option key={time} value={time}>{time}</option>)}
+                    {availableSlots.map((time) => <option key={time} value={time}>{time}</option>)}
                   </select>
                 </FormField>
               </div>
 
               <div style={{ background: C.white, borderRadius: 18, padding: 32, border: `1px solid ${C.gray200}` }}>
                 <h3 style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 20, color: C.black, margin: '0 0 24px', letterSpacing: '-0.02em' }}>{booking?.deliveryAddressTitle}</h3>
+                {auth.deliveryAddresses.length > 0 ? (
+                  <FormField label={booking?.savedAddressLabel || 'Saved addresses'} style={{ marginBottom: 16 }}>
+                    <select
+                      value=""
+                      onChange={(event) => {
+                        const selected = auth.deliveryAddresses.find((item) => String(item.id) === event.target.value);
+                        if (!selected) {
+                          return;
+                        }
+                        setData((current) => ({ ...current, address: selected.address_text }));
+                      }}
+                      style={{ width: '100%', padding: '13px 16px', border: `1.5px solid ${C.gray300}`, borderRadius: 10, fontFamily: 'Inter', fontSize: 15, outline: 'none', background: C.white }}
+                    >
+                      <option value="">{booking?.selectSavedAddress || 'Use a saved address'}</option>
+                      {auth.deliveryAddresses.map((address) => <option key={address.id} value={address.id}>{address.address_text}</option>)}
+                    </select>
+                  </FormField>
+                ) : null}
                 <FormField label={booking?.areaZone} style={{ marginBottom: 16 }}>
                   <select value={data.zone} onChange={(event) => setData((current) => ({ ...current, zone: event.target.value }))}
                     style={{ width: '100%', padding: '13px 16px', border: `1.5px solid ${C.gray300}`, borderRadius: 10, fontFamily: 'Inter', fontSize: 15, outline: 'none', background: C.white }}>
@@ -367,6 +423,49 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
                         style={{ width: '100%', boxSizing: 'border-box', padding: '13px 16px', border: `1.5px solid ${C.gray300}`, borderRadius: 10, fontFamily: 'Inter', fontSize: 15, outline: 'none' }} />
                     </FormField>
                   ))}
+                </div>
+
+                <div style={{ marginBottom: 28 }}>
+                  <h3 style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 20, color: C.black, margin: '0 0 12px', letterSpacing: '-0.02em' }}>{booking?.promoTitle || 'Promo code'}</h3>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <input
+                      type="text"
+                      value={promoState.code}
+                      onChange={(event) => setPromoState((current) => ({ ...current, code: event.target.value.toUpperCase(), valid: null, message: '' }))}
+                      placeholder={booking?.promoPlaceholder || 'Enter promo code'}
+                      style={{ flex: 1, boxSizing: 'border-box', padding: '13px 16px', border: `1.5px solid ${C.gray300}`, borderRadius: 10, fontFamily: 'Inter', fontSize: 15, outline: 'none' }}
+                    />
+                    <Btn
+                      variant="outline"
+                      onClick={async () => {
+                        if (!promoState.code.trim()) {
+                          setPromoState((current) => ({ ...current, valid: false, message: booking?.promoEmpty || 'Enter a promo code first.' }));
+                          return;
+                        }
+                        try {
+                          const response = await apiRequest('/marketing/promocodes/validate/', {
+                            method: 'POST',
+                            body: JSON.stringify({ code: promoState.code.trim(), amount: total || scooter.priceUSD }),
+                          });
+                          setPromoState((current) => ({
+                            ...current,
+                            valid: response.valid,
+                            discount: Number(response.discount_amount || 0),
+                            message: response.message,
+                          }));
+                        } catch (error) {
+                          setPromoState((current) => ({ ...current, valid: false, message: error.message || booking?.promoInvalid || 'Promo code is invalid.' }));
+                        }
+                      }}
+                    >
+                      {booking?.promoApply || 'Apply'}
+                    </Btn>
+                  </div>
+                  {promoState.message ? (
+                    <div style={{ marginTop: 10, fontFamily: 'Inter', fontSize: 13, color: promoState.valid ? '#166534' : '#9a3412' }}>
+                      {promoState.message}
+                    </div>
+                  ) : null}
                 </div>
 
                 <h3 style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 20, color: C.black, margin: '0 0 24px', letterSpacing: '-0.02em' }}>{booking?.paymentTitle}</h3>
@@ -467,12 +566,31 @@ export default function BookingPage({ scooter, onAccount, onCatalog, onHome }) {
                 quote ? [`$${Number(quote.base_price).toFixed(2)}`, `${days} ${common?.days}`] : null,
                 quote ? [booking?.addonsTitle, `$${Number(quote.add_ons_price).toFixed(2)}`] : null,
                 quote ? [booking?.summaryLabels?.delivery, `$${Number(quote.delivery_price).toFixed(2)}`] : null,
+                promoState.valid ? [booking?.promoDiscountLabel || 'Promo discount', `-$${promoState.discount.toFixed(2)}`] : null,
                 selectedZone ? [booking?.areaZone, selectedZone.name] : null,
               ].filter(Boolean).map(([label, value]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'Inter', fontSize: 13, color: C.gray700, marginBottom: 10 }}>
                   <span>{label}</span><span>{value}</span>
                 </div>
               ))}
+              {pricingPreview ? (
+                <>
+                  <Divider style={{ margin: '14px 0' }} />
+                  <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.gray500, marginBottom: 8 }}>{booking?.dynamicPricingTitle || 'Dynamic pricing'}</div>
+                  {[
+                    ['Base', Number(pricingPreview.base_price || 0)],
+                    ['Season', Number(pricingPreview.season_adjustment || 0)],
+                    ['Occupancy', Number(pricingPreview.occupancy_adjustment || 0)],
+                    ['Device', Number(pricingPreview.device_adjustment || 0)],
+                    ['Geo', Number(pricingPreview.geo_adjustment || 0)],
+                  ].map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'Inter', fontSize: 12, color: C.gray500, marginBottom: 6 }}>
+                      <span>{label}</span>
+                      <span>{value >= 0 ? `$${value.toFixed(2)}` : `-$${Math.abs(value).toFixed(2)}`}</span>
+                    </div>
+                  ))}
+                </>
+              ) : null}
               <Divider style={{ margin: '14px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'Sora', fontWeight: 800, fontSize: 17, color: C.black }}>
                 <span>{booking?.summaryLabels?.total}</span><span>${total.toFixed(2)}</span>

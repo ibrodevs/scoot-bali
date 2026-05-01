@@ -4,7 +4,7 @@ import { Btn, C, Icon } from './ui';
 import { ScooterCard } from './home';
 
 export default function CatalogPage({ onOpenScooter }) {
-  const { fleet, content } = useSite();
+  const { fleet, content, banners } = useSite();
   const [filters, setFilters] = React.useState({ type: 'all', maxPrice: 15, available: false });
   const [sort, setSort] = React.useState('popular');
   const catalog = content?.catalog;
@@ -24,6 +24,7 @@ export default function CatalogPage({ onOpenScooter }) {
 
   const setFilter = (patch) => setFilters((current) => ({ ...current, ...patch }));
   const typeOptions = ['all', 'scooter', 'maxi', 'moto'];
+  const catalogBanner = banners.find((item) => item.placement === 'catalog_middle');
 
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: C.gray100 }}>
@@ -98,7 +99,23 @@ export default function CatalogPage({ onOpenScooter }) {
 
           {filtered.length > 0 ? (
             <div className="catalog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
-              {filtered.map((item) => <ScooterCard key={item.id} scooter={item} onOpenScooter={onOpenScooter} />)}
+              {filtered.flatMap((item, index) => {
+                const parts = [<ScooterCard key={item.id} scooter={item} onOpenScooter={onOpenScooter} />];
+                if (catalogBanner && index === 1) {
+                  parts.push(
+                    <a
+                      key={`banner-${catalogBanner.id}`}
+                      href={catalogBanner.link_url || '#'}
+                      target={catalogBanner.link_url ? '_blank' : undefined}
+                      rel={catalogBanner.link_url ? 'noreferrer' : undefined}
+                      style={{ gridColumn: '1 / -1', borderRadius: 18, overflow: 'hidden', border: `1px solid ${C.gray200}`, background: C.white }}
+                    >
+                      <img src={catalogBanner.image} alt={catalogBanner.title} style={{ display: 'block', width: '100%', maxHeight: 240, objectFit: 'cover' }} />
+                    </a>,
+                  );
+                }
+                return parts;
+              })}
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '80px 0', background: C.white, borderRadius: 18, border: `1px solid ${C.gray200}` }}>

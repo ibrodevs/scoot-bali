@@ -157,23 +157,24 @@ export function SplashScreen({ copy }) {
 
 export function OnboardingScreen({ step, navigation }) {
   const insets = useSafeAreaInsets();
+  const copy = navigation.copy;
   const screens = [
     {
-      title: "Live Fleet\nfrom Backend",
-      sub: "Browse the real scooter catalog with live prices, availability, and vehicle details.",
-      cta: "Continue",
+      title: copy.onboardingTitle1,
+      sub: copy.onboardingSub1,
+      cta: copy.continue,
       colors: ["#1A1A1A", "#080808"],
     },
     {
-      title: "Real Booking\nFlow",
-      sub: "Dates, delivery, add-ons, booking creation, and payment are all connected to the backend.",
-      cta: "Next",
+      title: copy.onboardingTitle2,
+      sub: copy.onboardingSub2,
+      cta: copy.next,
       colors: ["#141824", "#080808"],
     },
     {
-      title: "Profile,\nDocs, Support",
-      sub: "Track bookings, upload documents, read notifications, and message support from the app.",
-      cta: "Get Started",
+      title: copy.onboardingTitle3,
+      sub: copy.onboardingSub3,
+      cta: copy.getStarted,
       colors: ["#1A1410", "#080808"],
     },
   ];
@@ -394,7 +395,7 @@ export function HomeScreen({ app, navigation }) {
                   {featured.description}
                 </AppText>
                 <PrimaryButton variant="gold" onPress={() => navigation.openScooter(featured.id)}>
-                  {`${copy.continue || "Continue"} →`}
+                  {`${copy.continue} →`}
                 </PrimaryButton>
               </View>
             </View>
@@ -404,9 +405,9 @@ export function HomeScreen({ app, navigation }) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 16, paddingBottom: 22 }}>
             {[
               { key: "all", label: copy.all },
-              { key: "scooter", label: labels.types?.scooter || "Scooter" },
-              { key: "maxi", label: labels.types?.maxi || "Maxi" },
-              { key: "moto", label: labels.types?.moto || "Motorcycle" },
+              { key: "scooter", label: labels.types?.scooter || copy.scooterType },
+              { key: "maxi", label: labels.types?.maxi || copy.maxiType },
+              { key: "moto", label: labels.types?.moto || copy.motoType },
               { key: "available", label: copy.available },
             ].map((item) => (
               <FilterPill key={item.key} label={item.label} active={category === item.key} onPress={() => setCategory(item.key)} />
@@ -434,7 +435,7 @@ export function HomeScreen({ app, navigation }) {
             </View>
           </View>
 
-          <SectionHeader title={copy.topPicks} actionLabel={app.content?.home?.fleet?.cta || "View all →"} onPress={() => navigation.toTab("fleet")} />
+          <SectionHeader title={copy.topPicks} actionLabel={app.content?.home?.fleet?.cta || `${copy.viewAll} →`} onPress={() => navigation.toTab("fleet")} />
           <View style={{ gap: 14 }}>
             {featuredList.slice(0, 3).map((scooter) => (
               <Pressable key={scooter.id} onPress={() => navigation.openScooter(scooter.id)} style={{ backgroundColor: COLORS.white, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: COLORS.gray200 }}>
@@ -497,9 +498,9 @@ export function FleetScreen({ app, navigation }) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 16, paddingBottom: 16 }}>
             {[
               { key: "all", label: copy.all },
-              { key: "scooter", label: labels.types?.scooter || "Scooter" },
-              { key: "maxi", label: labels.types?.maxi || "Maxi" },
-              { key: "moto", label: labels.types?.moto || "Motorcycle" },
+              { key: "scooter", label: labels.types?.scooter || copy.scooterType },
+              { key: "maxi", label: labels.types?.maxi || copy.maxiType },
+              { key: "moto", label: labels.types?.moto || copy.motoType },
               { key: "available", label: copy.available },
             ].map((item) => (
               <Pressable key={item.key} onPress={() => setFilter(item.key)} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: filter === item.key ? COLORS.gold : COLORS.gray100, borderWidth: 1, borderColor: filter === item.key ? COLORS.gold : COLORS.gray200 }}>
@@ -715,9 +716,9 @@ export function BookingDatesScreen({ app, bookingRange, navigation, setBookingRa
 
         <View style={{ marginTop: 24, marginBottom: 20, borderRadius: 14, backgroundColor: COLORS.gray100, padding: 16, flexDirection: "row" }}>
           {[
-            { label: "Check-in", value: formatDate(bookingRange.start, app.language) },
-            { label: "Check-out", value: formatDate(bookingRange.end, app.language) },
-            { label: "Duration", value: `${getBookingDuration(bookingRange)} ${app.labels.daysLabel}` },
+            { label: copy.checkIn, value: formatDate(bookingRange.start, app.language) },
+            { label: copy.checkOut, value: formatDate(bookingRange.end, app.language) },
+            { label: copy.duration, value: `${getBookingDuration(bookingRange)} ${app.labels.daysLabel}` },
           ].map((item, index) => (
             <View key={item.label} style={{ flex: 1, paddingHorizontal: 8, borderRightWidth: index < 2 ? 1 : 0, borderRightColor: COLORS.gray250 }}>
               <AppText family="inter" weight="bold" style={{ fontSize: 10, color: COLORS.gray500, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>
@@ -787,7 +788,7 @@ export function DeliveryScreen({
           </AppText>
         </View>
 
-        <LabeledInput label={copy.address} value={deliveryAddress} onChangeText={setDeliveryAddress} placeholder="Villa, hotel, apartment..." style={{ marginBottom: 24 }} />
+        <LabeledInput label={copy.address} value={deliveryAddress} onChangeText={setDeliveryAddress} placeholder={copy.addressPlaceholder} style={{ marginBottom: 24 }} />
 
         <SectionHeader title={copy.deliveryZone} />
         <View style={{ gap: 10, marginBottom: 24 }}>

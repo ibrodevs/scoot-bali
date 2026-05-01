@@ -4,6 +4,15 @@ import { apiRequest } from './api';
 const SiteContext = React.createContext(null);
 const STORAGE_KEY = 'scoot-bali-lang';
 
+const ERROR_COPY = {
+  en: 'Failed to load data',
+  ru: 'Не удалось загрузить данные',
+  zh: '无法加载数据',
+  id: 'Gagal memuat data',
+  de: 'Daten konnten nicht geladen werden',
+  fr: 'Impossible de charger les donnees',
+};
+
 function preferredLang() {
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored) {
@@ -18,15 +27,21 @@ export function SiteProvider({ children }) {
     loading: true,
     error: '',
     data: null,
+    banners: [],
+    reviews: [],
   });
 
   async function load(nextLang = lang) {
     setState((current) => ({ ...current, loading: true, error: '' }));
     try {
-      const data = await apiRequest(`/public/bootstrap/?lang=${encodeURIComponent(nextLang)}`);
-      setState({ loading: false, error: '', data });
+      const [data, banners, reviews] = await Promise.all([
+        apiRequest(`/public/bootstrap/?lang=${encodeURIComponent(nextLang)}`),
+        apiRequest('/banners/').catch(() => []),
+        apiRequest('/reviews/').catch(() => []),
+      ]);
+      setState({ loading: false, error: '', data, banners: Array.isArray(banners) ? banners : banners?.results || [], reviews: Array.isArray(reviews) ? reviews : reviews?.results || [] });
     } catch (error) {
-      setState({ loading: false, error: error.message || 'Failed to load', data: null });
+      setState({ loading: false, error: error.message || ERROR_COPY[nextLang] || ERROR_COPY.en, data: null, banners: [], reviews: [] });
     }
   }
 
@@ -48,6 +63,10 @@ export function SiteProvider({ children }) {
     featuredFleet: data.fleet?.featured || [],
     addons: data.addons || [],
     deliveryZones: data.deliveryZones || [],
+    deliverySlots: data.deliverySlots || [],
+    supportLinks: data.supportLinks || [],
+    banners: state.banners,
+    reviews: state.reviews,
   };
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;

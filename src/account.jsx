@@ -53,6 +53,52 @@ export default function AccountPage({ onCatalog, onHome }) {
   const account = content?.account;
   const common = content?.common;
   const detail = content?.detail;
+  const fallback = {
+    en: {
+      ticketSubjectRequired: 'Add a subject for the support ticket.',
+      ticketCreateFailed: 'Failed to create support ticket.',
+      ticketMessageFailed: 'Failed to send ticket message.',
+      payCrypto: 'Pay with crypto',
+      paymentHistory: 'Payment history',
+      supportTicketsTitle: 'Support tickets',
+      supportTicketPlaceholder: 'Subject',
+      supportTicketCreate: 'Create ticket',
+      supportTicketsEmpty: 'No support tickets yet.',
+      supportTicketEmptyState: 'Select or create a support ticket.',
+      supportLinksTitle: 'Contact links',
+      savedAddressesTitle: 'Saved delivery addresses',
+      addressPlaceholder: 'Villa / hotel address',
+    },
+    ru: {
+      ticketSubjectRequired: 'Добавьте тему обращения.',
+      ticketCreateFailed: 'Не удалось создать тикет поддержки.',
+      ticketMessageFailed: 'Не удалось отправить сообщение в тикет.',
+      payCrypto: 'Оплатить криптой',
+      paymentHistory: 'История оплат',
+      supportTicketsTitle: 'Тикеты поддержки',
+      supportTicketPlaceholder: 'Тема',
+      supportTicketCreate: 'Создать тикет',
+      supportTicketsEmpty: 'Тикетов поддержки пока нет.',
+      supportTicketEmptyState: 'Выберите тикет или создайте новый.',
+      supportLinksTitle: 'Контакты',
+      savedAddressesTitle: 'Сохранённые адреса доставки',
+      addressPlaceholder: 'Адрес виллы или отеля',
+    },
+  }[lang] || {
+    ticketSubjectRequired: 'Add a subject for the support ticket.',
+    ticketCreateFailed: 'Failed to create support ticket.',
+    ticketMessageFailed: 'Failed to send ticket message.',
+    payCrypto: 'Pay with crypto',
+    paymentHistory: 'Payment history',
+    supportTicketsTitle: 'Support tickets',
+    supportTicketPlaceholder: 'Subject',
+    supportTicketCreate: 'Create ticket',
+    supportTicketsEmpty: 'No support tickets yet.',
+    supportTicketEmptyState: 'Select or create a support ticket.',
+    supportLinksTitle: 'Contact links',
+    savedAddressesTitle: 'Saved delivery addresses',
+    addressPlaceholder: 'Villa / hotel address',
+  };
   const [tab, setTab] = React.useState('bookings');
   const [authTab, setAuthTab] = React.useState('login');
   const [authForm, setAuthForm] = React.useState({ email: '', password: '', fullName: '', phone: '' });
@@ -68,6 +114,11 @@ export default function AccountPage({ onCatalog, onHome }) {
   const [threadLoading, setThreadLoading] = React.useState(false);
   const [threadError, setThreadError] = React.useState('');
   const [chatDraft, setChatDraft] = React.useState('');
+  const [addressForm, setAddressForm] = React.useState({ address_text: '', lat: '', lng: '' });
+  const [activeTicketId, setActiveTicketId] = React.useState(null);
+  const [ticketSubject, setTicketSubject] = React.useState('');
+  const [ticketDraft, setTicketDraft] = React.useState('');
+  const [cryptoLoadingBookingId, setCryptoLoadingBookingId] = React.useState(null);
 
   React.useEffect(() => {
     if (auth.profile) {
@@ -90,6 +141,16 @@ export default function AccountPage({ onCatalog, onHome }) {
       setActiveThreadId(auth.chatThreads[0].id);
     }
   }, [activeThreadId, auth.chatThreads]);
+
+  React.useEffect(() => {
+    if (!auth.supportTickets.length) {
+      setActiveTicketId(null);
+      return;
+    }
+    if (!activeTicketId || !auth.supportTickets.some((ticket) => ticket.id === activeTicketId)) {
+      setActiveTicketId(auth.supportTickets[0].id);
+    }
+  }, [activeTicketId, auth.supportTickets]);
 
   async function loadThreadMessages(threadId, showLoading = true) {
     if (!threadId) {
@@ -137,6 +198,7 @@ export default function AccountPage({ onCatalog, onHome }) {
   }, [activeThreadId, auth.isAuthenticated, tab]);
 
   const scooterMap = Object.fromEntries(fleet.map((item) => [item.id, item]));
+  const activeTicket = auth.supportTickets.find((ticket) => ticket.id === activeTicketId) || null;
 
   async function submitAuth() {
     setWorking(true);
@@ -229,6 +291,27 @@ export default function AccountPage({ onCatalog, onHome }) {
     }
   }
 
+  async function handleCryptoPayment(item) {
+    setCryptoLoadingBookingId(item.id);
+    setSubmitError('');
+    setMessage('');
+    try {
+      const currencies = await auth.getCryptoCurrencies();
+      if (!currencies.length) {
+        throw new Error(account?.cryptoUnavailable || 'Crypto payments are unavailable right now.');
+      }
+      const invoice = await auth.createCryptoInvoice(item.id, currencies[0].id);
+      if (invoice.payment_url) {
+        window.open(invoice.payment_url, '_blank', 'noopener,noreferrer');
+      }
+      setMessage(account?.cryptoStarted || `Crypto invoice created in ${invoice.currency?.code || currencies[0].code}.`);
+    } catch (error) {
+      setSubmitError(error.message || account?.cryptoFailed || 'Failed to start crypto payment.');
+    } finally {
+      setCryptoLoadingBookingId(null);
+    }
+  }
+
   async function handleBookingCancel(item) {
     setWorkingBookingId(item.id);
     setSubmitError('');
@@ -282,6 +365,63 @@ export default function AccountPage({ onCatalog, onHome }) {
       setChatDraft('');
     } catch (error) {
       setThreadError(error.message || account?.supportHint);
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleSaveAddress() {
+    if (!addressForm.address_text.trim()) {
+      setSubmitError(account?.addressRequired || 'Please enter an address.');
+      return;
+    }
+    setWorking(true);
+    setSubmitError('');
+    setMessage('');
+    try {
+      await auth.saveDeliveryAddress({
+        address_text: addressForm.address_text.trim(),
+        lat: addressForm.lat ? Number(addressForm.lat) : 0,
+        lng: addressForm.lng ? Number(addressForm.lng) : 0,
+      });
+      setAddressForm({ address_text: '', lat: '', lng: '' });
+      setMessage(account?.addressSaved || 'Delivery address saved.');
+    } catch (error) {
+      setSubmitError(error.message || account?.addressSaveFailed || 'Failed to save address.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleCreateTicket() {
+    if (!ticketSubject.trim()) {
+      setThreadError(account?.ticketSubjectRequired || fallback.ticketSubjectRequired);
+      return;
+    }
+    setWorking(true);
+    setThreadError('');
+    try {
+      const ticket = await auth.createSupportTicket({ subject: ticketSubject.trim(), channel: 'app' });
+      setTicketSubject('');
+      setActiveTicketId(ticket.id);
+    } catch (error) {
+      setThreadError(error.message || account?.ticketCreateFailed || fallback.ticketCreateFailed);
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleSendTicketMessage() {
+    if (!activeTicketId || !ticketDraft.trim()) {
+      return;
+    }
+    setWorking(true);
+    setThreadError('');
+    try {
+      await auth.sendSupportTicketMessage(activeTicketId, ticketDraft.trim());
+      setTicketDraft('');
+    } catch (error) {
+      setThreadError(error.message || account?.ticketMessageFailed || fallback.ticketMessageFailed);
     } finally {
       setWorking(false);
     }
@@ -412,6 +552,7 @@ export default function AccountPage({ onCatalog, onHome }) {
                 const fleetScooter = scooterMap[item.scooter?.id];
                 const paymentStatus = item.latest_payment?.status || item.payment_status;
                 const canPay = item.payment_method === 'online_card' && item.payment_status !== 'paid' && !['completed', 'cancelled'].includes(item.status);
+                const canPayCrypto = item.payment_status !== 'paid' && !['completed', 'cancelled'].includes(item.status);
                 const canCancel = !['cancelled', 'completed'].includes(item.status);
                 const isBusy = workingBookingId === item.id;
                 const bookingMeta = [
@@ -449,6 +590,11 @@ export default function AccountPage({ onCatalog, onHome }) {
                               : account?.payNow)}
                           </Btn>
                         )}
+                        {canPayCrypto && (
+                          <Btn variant="ghost" size="sm" onClick={() => handleCryptoPayment(item)} disabled={cryptoLoadingBookingId === item.id}>
+                            {cryptoLoadingBookingId === item.id ? '...' : (account?.payCrypto || fallback.payCrypto)}
+                          </Btn>
+                        )}
                         {canCancel && (
                           <Btn variant="outline" size="sm" onClick={() => handleBookingCancel(item)} disabled={isBusy}>
                             {isBusy ? '...' : account?.cancelBookingAction}
@@ -459,6 +605,26 @@ export default function AccountPage({ onCatalog, onHome }) {
                   </div>
                 );
               })}
+
+              {auth.payments.length > 0 ? (
+                <div style={{ marginTop: 28 }}>
+                  <h3 style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 20, color: C.black, margin: '0 0 16px' }}>{account?.paymentHistory || fallback.paymentHistory}</h3>
+                  <div style={{ background: C.white, borderRadius: 18, border: `1px solid ${C.gray200}`, overflow: 'hidden' }}>
+                    {auth.payments.slice(0, 8).map((payment) => (
+                      <div key={payment.id} style={{ padding: '16px 20px', borderBottom: `1px solid ${C.gray200}`, display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 14, color: C.black }}>{payment.provider}</div>
+                          <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.gray500, marginTop: 4 }}>{formatDateTime(payment.created_at, lang)}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 14, color: C.black }}>${Number(payment.amount_usd).toFixed(2)}</div>
+                          <Badge variant={paymentVariant(payment.status)}>{paymentStatusText(payment.status, account)}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -466,7 +632,7 @@ export default function AccountPage({ onCatalog, onHome }) {
             <div>
               <h2 style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 32, letterSpacing: '-0.04em', color: C.black, margin: '0 0 24px' }}>{account?.documents}</h2>
               <div style={{ background: C.white, borderRadius: 18, padding: 32, border: `1px solid ${C.gray200}`, marginBottom: 20 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 16, alignItems: 'end' }}>
+                <div className="account-doc-upload" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 16, alignItems: 'end' }}>
                   <FormField label={account?.documentType}>
                     <select value={docForm.document_type} onChange={(event) => setDocForm((current) => ({ ...current, document_type: event.target.value }))} style={{ width: '100%', padding: '13px 16px', border: `1.5px solid ${C.gray300}`, borderRadius: 10, fontFamily: 'Inter', fontSize: 15, outline: 'none', background: C.white }}>
                       {Object.entries(common?.documentTypes || {}).map(([value, label]) => (
@@ -555,7 +721,7 @@ export default function AccountPage({ onCatalog, onHome }) {
                 </div>
               ) : null}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+              <div className="account-support-layout" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
                 <div style={{ background: C.white, borderRadius: 18, overflow: 'hidden', border: `1px solid ${C.gray200}` }}>
                   {auth.chatThreads.length === 0 ? (
                     <div style={{ padding: 24, fontFamily: 'Inter', color: C.gray500 }}>{account?.noSupportThreads}</div>
@@ -618,6 +784,77 @@ export default function AccountPage({ onCatalog, onHome }) {
                   )}
                 </div>
               </div>
+
+              <div className="account-ticket-layout" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 16 }}>
+                <div style={{ background: C.white, borderRadius: 18, overflow: 'hidden', border: `1px solid ${C.gray200}`, padding: 20 }}>
+                  <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 18, color: C.black, marginBottom: 12 }}>{account?.supportTicketsTitle || fallback.supportTicketsTitle}</div>
+                  <div className="account-ticket-actions" style={{ display: 'grid', gap: 10, marginBottom: 14 }}>
+                    <StyledInput value={ticketSubject} onChange={(event) => setTicketSubject(event.target.value)} placeholder={account?.supportTicketPlaceholder || fallback.supportTicketPlaceholder} />
+                    <Btn variant="outline" onClick={handleCreateTicket} disabled={working}>{account?.supportTicketCreate || fallback.supportTicketCreate}</Btn>
+                  </div>
+                  {auth.supportTickets.length === 0 ? (
+                    <div style={{ fontFamily: 'Inter', fontSize: 14, color: C.gray500 }}>{account?.supportTicketsEmpty || fallback.supportTicketsEmpty}</div>
+                  ) : auth.supportTickets.map((ticket) => (
+                    <div key={ticket.id} onClick={() => setActiveTicketId(ticket.id)} style={{ padding: '14px 0', borderTop: `1px solid ${C.gray200}`, cursor: 'pointer' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+                        <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 14, color: C.black }}>{ticket.subject}</div>
+                        <Badge variant={ticket.status === 'closed' ? 'default' : ticket.status === 'in_progress' ? 'orange' : 'blue'}>{ticket.status}</Badge>
+                      </div>
+                      <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.gray500 }}>{formatDateTime(ticket.created_at, lang)}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ background: C.white, borderRadius: 18, border: `1px solid ${C.gray200}`, display: 'flex', flexDirection: 'column', minHeight: 420 }}>
+                  {activeTicket ? (
+                    <>
+                      <div style={{ padding: '20px 24px', borderBottom: `1px solid ${C.gray200}` }}>
+                        <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 18, color: C.black }}>{activeTicket.subject}</div>
+                        <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.gray500, marginTop: 4 }}>{activeTicket.channel} · {activeTicket.status}</div>
+                      </div>
+                      <div style={{ flex: 1, padding: '20px 24px', background: C.gray100, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
+                        {(activeTicket.messages || []).length === 0 ? (
+                          <div style={{ fontFamily: 'Inter', fontSize: 14, color: C.gray500 }}>{account?.supportTicketsEmpty || fallback.supportTicketsEmpty}</div>
+                        ) : activeTicket.messages.map((item) => {
+                          const isOwn = item.sender?.email === auth.profile?.email;
+                          return (
+                            <div key={item.id} style={{ alignSelf: isOwn ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
+                              <div style={{ background: isOwn ? C.black : C.white, color: isOwn ? C.white : C.black, borderRadius: isOwn ? '18px 6px 18px 18px' : '6px 18px 18px 18px', padding: '12px 16px' }}>
+                                <div style={{ fontFamily: 'Inter', fontSize: 14, lineHeight: 1.6 }}>{item.message}</div>
+                              </div>
+                              <div style={{ fontFamily: 'Inter', fontSize: 11, color: C.gray500, marginTop: 5, textAlign: isOwn ? 'right' : 'left' }}>{formatDateTime(item.created_at, lang)}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ padding: '18px 24px', borderTop: `1px solid ${C.gray200}` }}>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                          <textarea value={ticketDraft} onChange={(event) => setTicketDraft(event.target.value)} placeholder={account?.supportPlaceholder} style={{ width: '100%', minHeight: 96, resize: 'vertical', borderRadius: 12, border: `1.5px solid ${C.gray300}`, padding: '14px 16px', fontFamily: 'Inter', fontSize: 14, outline: 'none' }} />
+                          <Btn variant="primary" onClick={handleSendTicketMessage} disabled={working || !ticketDraft.trim()} style={{ height: 44 }}>
+                            {working ? '...' : account?.supportSend}
+                          </Btn>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ padding: 24, fontFamily: 'Inter', color: C.gray500 }}>{account?.supportTicketsEmpty || fallback.supportTicketEmptyState}</div>
+                  )}
+                </div>
+              </div>
+
+              {auth.supportLinks.length > 0 ? (
+                <div style={{ marginTop: 16, background: C.white, borderRadius: 18, border: `1px solid ${C.gray200}`, padding: 24 }}>
+                  <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 18, color: C.black, marginBottom: 12 }}>{account?.supportLinksTitle || fallback.supportLinksTitle}</div>
+                  <div className="account-support-links" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                    {auth.supportLinks.map((link) => (
+                      <a key={link.id} href={link.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderRadius: 12, background: C.gray100, color: C.black, textDecoration: 'none', fontFamily: 'Inter', fontSize: 14, fontWeight: 600 }}>
+                        <Icon name="phone" size={14} color={C.black} />
+                        <span>{link.title}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -625,7 +862,7 @@ export default function AccountPage({ onCatalog, onHome }) {
             <div>
               <h2 style={{ fontFamily: 'Sora', fontWeight: 800, fontSize: 32, letterSpacing: '-0.04em', color: C.black, margin: '0 0 24px' }}>{account?.profile}</h2>
               <div style={{ background: C.white, borderRadius: 18, padding: 32, border: `1px solid ${C.gray200}` }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="account-profile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                   <FormField label={account?.fullName}>
                     <StyledInput value={profileForm.full_name} onChange={(event) => setProfileForm((current) => ({ ...current, full_name: event.target.value }))} placeholder="Alex Kim" />
                   </FormField>
@@ -649,9 +886,30 @@ export default function AccountPage({ onCatalog, onHome }) {
                     <StyledInput value={auth.profile?.email || ''} onChange={() => {}} placeholder={auth.profile?.email || ''} />
                   </FormField>
                 </div>
-                <div style={{ marginTop: 28 }}>
+                <div className="account-profile-actions" style={{ marginTop: 28 }}>
                   <Btn variant="primary" onClick={saveProfile} disabled={working}>{account?.saveProfile}</Btn>
                 </div>
+              </div>
+
+              <div style={{ background: C.white, borderRadius: 18, padding: 32, border: `1px solid ${C.gray200}`, marginTop: 20 }}>
+                <h3 style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 22, color: C.black, margin: '0 0 18px', letterSpacing: '-0.02em' }}>{account?.savedAddressesTitle || fallback.savedAddressesTitle}</h3>
+                <div className="account-address-form" style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr 0.6fr auto', gap: 12, marginBottom: 20 }}>
+                  <StyledInput value={addressForm.address_text} onChange={(event) => setAddressForm((current) => ({ ...current, address_text: event.target.value }))} placeholder={account?.addressPlaceholder || fallback.addressPlaceholder} />
+                  <StyledInput value={addressForm.lat} onChange={(event) => setAddressForm((current) => ({ ...current, lat: event.target.value }))} placeholder="Lat" />
+                  <StyledInput value={addressForm.lng} onChange={(event) => setAddressForm((current) => ({ ...current, lng: event.target.value }))} placeholder="Lng" />
+                  <Btn variant="dark" onClick={handleSaveAddress} disabled={working}>{account?.saveAddress || 'Save'}</Btn>
+                </div>
+                {auth.deliveryAddresses.length === 0 ? (
+                  <div style={{ fontFamily: 'Inter', fontSize: 14, color: C.gray500 }}>{account?.savedAddressesEmpty || 'No saved addresses yet.'}</div>
+                ) : auth.deliveryAddresses.map((address) => (
+                  <div key={address.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '14px 0', borderTop: `1px solid ${C.gray200}` }}>
+                    <div>
+                      <div style={{ fontFamily: 'Sora', fontWeight: 700, fontSize: 14, color: C.black }}>{address.address_text}</div>
+                      <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.gray500, marginTop: 4 }}>{Number(address.lat).toFixed(4)}, {Number(address.lng).toFixed(4)}</div>
+                    </div>
+                    <Btn variant="ghost" onClick={() => auth.deleteDeliveryAddress(address.id)}>{account?.deleteAddress || 'Delete'}</Btn>
+                  </div>
+                ))}
               </div>
             </div>
           )}

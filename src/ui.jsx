@@ -371,6 +371,51 @@ export function ScooterImg({ scooter, height = 220 }) {
   const typeLabel = scooter?.typeLabel || common?.types?.[scooter?.type] || scooter?.type || common?.types?.scooter || '';
   const engineLabel = scooter?.engine || '';
   const accent = scooter?.accent || '#111111';
+  const imageUrl =
+    scooter?.selectedImage ||
+    scooter?.mainImage ||
+    scooter?.main_image ||
+    scooter?.image ||
+    scooter?.gallery?.[0]?.image ||
+    scooter?.images?.[0]?.image ||
+    '';
+
+  if (imageUrl) {
+    return (
+      <div style={{
+        width: '100%',
+        height,
+        position: 'relative',
+        overflow: 'hidden',
+        background: '#0a0a0a',
+      }}>
+        <img
+          src={imageUrl}
+          alt={name}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+        />
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.48) 100%)',
+        }} />
+        <div style={{ position: 'absolute', left: 20, right: 20, bottom: 18 }}>
+          <div style={{ color: 'rgba(255,255,255,0.78)', fontSize: 15, fontFamily: 'Sora, sans-serif', fontWeight: 700, letterSpacing: '-0.02em' }}>{name}</div>
+          {(engineLabel || typeLabel) && (
+            <div style={{ color: C.gold, fontSize: 11, marginTop: 6, fontFamily: 'Inter', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              {[engineLabel, typeLabel].filter(Boolean).join(' · ')}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{

@@ -78,7 +78,7 @@ function initialAuthForm() {
   };
 }
 
-function getErrorMessage(error) {
+function getErrorMessage(error, language = "en") {
   if (error instanceof ApiError) {
     if (typeof error.details === "object" && error.details && !Array.isArray(error.details)) {
       const firstValue = Object.values(error.details)[0];
@@ -92,7 +92,7 @@ function getErrorMessage(error) {
     return error.message;
   }
 
-  return error?.message || "Something went wrong";
+  return error?.message || translate(language, "somethingWentWrong");
 }
 
 export default function App() {
@@ -250,7 +250,7 @@ export default function App() {
           return;
         }
 
-        setBootstrapError(getErrorMessage(error));
+        setBootstrapError(getErrorMessage(error, language));
         setBootstrapLoading(false);
       });
 
@@ -322,7 +322,7 @@ export default function App() {
       if (!background) {
         setPrivateLoading(false);
       }
-      setPrivateError(getErrorMessage(error));
+      setPrivateError(getErrorMessage(error, language));
       if (error instanceof ApiError && error.status === 401) {
         await signOut();
       }
@@ -379,7 +379,7 @@ export default function App() {
           return;
         }
         setQuote(null);
-        setQuoteError(getErrorMessage(error));
+        setQuoteError(getErrorMessage(error, language));
         setQuoteLoading(false);
       });
 
@@ -444,7 +444,7 @@ export default function App() {
         setStack([{ name: "home" }]);
       }
     } catch (error) {
-      setAuthError(getErrorMessage(error));
+      setAuthError(getErrorMessage(error, language));
     } finally {
       setAuthSubmitting(false);
     }
@@ -460,7 +460,7 @@ export default function App() {
       });
       setAuthError(translate(language, "passwordResetSent"));
     } catch (error) {
-      setAuthError(getErrorMessage(error));
+      setAuthError(getErrorMessage(error, language));
     }
   }
 
@@ -557,7 +557,7 @@ export default function App() {
 
       setStack([{ name: "confirmed", params: { booking: finalBooking } }]);
     } catch (error) {
-      setQuoteError(getErrorMessage(error));
+      setQuoteError(getErrorMessage(error, language));
     } finally {
       setBookingSubmitting(false);
     }
@@ -576,7 +576,7 @@ export default function App() {
       });
       await loadPrivateData(session.access);
     } catch (error) {
-      setPrivateError(getErrorMessage(error));
+      setPrivateError(getErrorMessage(error, language));
     }
   }
 
@@ -654,7 +654,7 @@ export default function App() {
 
       await loadPrivateData(session.access);
     } catch (error) {
-      setDocumentError(getErrorMessage(error));
+      setDocumentError(getErrorMessage(error, language));
     } finally {
       setDocumentUploading(false);
     }
@@ -681,7 +681,7 @@ export default function App() {
       setThreadMessages(nextMessages);
       return nextMessages;
     } catch (error) {
-      setThreadError(getErrorMessage(error));
+      setThreadError(getErrorMessage(error, language));
       return [];
     } finally {
       if (!background) {
@@ -734,7 +734,7 @@ export default function App() {
       await refreshThreadMessages(threadId, session.access, { background: true });
       await loadPrivateData(session.access, { background: true });
     } catch (error) {
-      setThreadError(getErrorMessage(error));
+      setThreadError(getErrorMessage(error, language));
     } finally {
       setThreadLoading(false);
     }
@@ -750,7 +750,7 @@ export default function App() {
       setThreadMessage(text);
       await openThread(thread.id);
     } catch (error) {
-      setSupportError(getErrorMessage(error));
+      setSupportError(getErrorMessage(error, language));
     }
   }
 
@@ -780,7 +780,7 @@ export default function App() {
       });
       setProfile(nextProfile);
     } catch (error) {
-      setSettingsError(getErrorMessage(error));
+      setSettingsError(getErrorMessage(error, language));
     } finally {
       setSettingsSaving(false);
     }
@@ -847,6 +847,7 @@ export default function App() {
 
   const navigation = useMemo(
     () => ({
+      copy,
       push: (name, params = {}) => setStack((current) => [...current, { name, params }]),
       replace: (name, params = {}) => setStack((current) => replaceTop(current, { name, params })),
       goBack: () => setStack((current) => (current.length > 1 ? current.slice(0, -1) : current)),
@@ -899,7 +900,7 @@ export default function App() {
       <SafeAreaProvider>
         <StatusBar style="dark" />
         <View style={{ flex: 1, backgroundColor: COLORS.white, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
-          <Text style={{ color: COLORS.black, fontSize: 18, fontWeight: "700", marginBottom: 10 }}>Backend connection error</Text>
+          <Text style={{ color: COLORS.black, fontSize: 18, fontWeight: "700", marginBottom: 10 }}>{translate(language, "backendConnectionError")}</Text>
           <Text style={{ color: COLORS.gray700, textAlign: "center", marginBottom: 10 }}>{bootstrapError}</Text>
           <Text style={{ color: COLORS.gray500, fontSize: 12 }}>{API_BASE_URL}</Text>
         </View>

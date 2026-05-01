@@ -1,5 +1,10 @@
 import Constants from "expo-constants";
 
+const FALLBACK_ERRORS = {
+  en: "Request failed",
+  ru: "Запрос не выполнен",
+};
+
 function trimTrailingSlash(value) {
   return value.replace(/\/+$/, "");
 }
@@ -59,7 +64,7 @@ function buildUrl(path) {
   return `${API_BASE_URL}/${path}`;
 }
 
-async function parseResponse(response) {
+async function parseResponse(response, language = "en") {
   const text = await response.text();
   let data = null;
 
@@ -76,7 +81,7 @@ async function parseResponse(response) {
       data?.error ||
       data?.detail ||
       data?.message ||
-      (typeof data === "string" ? data : "Request failed");
+      (typeof data === "string" ? data : FALLBACK_ERRORS[language] || FALLBACK_ERRORS.en);
 
     throw new ApiError(message, data, response.status);
   }
@@ -103,5 +108,5 @@ export async function apiRequest(path, options = {}) {
     body: body == null ? undefined : isMultipart ? body : JSON.stringify(body),
   });
 
-  return parseResponse(response);
+  return parseResponse(response, language);
 }

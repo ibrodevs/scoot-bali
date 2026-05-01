@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -66,6 +66,18 @@ function resolveFont(family, weight) {
   if (weight === "semibold") return FONTS.interSemiBold;
   if (weight === "bold") return FONTS.interBold;
   return FONTS.interRegular;
+}
+
+function resolveScooterImage(scooter) {
+  return (
+    scooter?.selectedImage ||
+    scooter?.mainImage ||
+    scooter?.main_image ||
+    scooter?.image ||
+    scooter?.gallery?.[0]?.image ||
+    scooter?.images?.[0]?.image ||
+    ""
+  );
 }
 
 export function AppText({ children, family = "inter", weight = "regular", style, ...rest }) {
@@ -259,36 +271,55 @@ export function LabeledInput({
 }
 
 export function ScooterThumb({ scooter, height = 150 }) {
+  const imageUri = resolveScooterImage(scooter);
+
   return (
-    <LinearGradient
-      colors={[scooter.accent || COLORS.black, "#1A1A1A"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ height, borderRadius: 12, overflow: "hidden", alignItems: "center", justifyContent: "center" }}
-    >
-      {Array.from({ length: 10 }, (_, index) => (
-        <View
-          key={index}
-          style={{
-            position: "absolute",
-            left: index * 30 - 40,
-            top: -24,
-            width: 18,
-            height: height + 60,
-            backgroundColor: "rgba(255,255,255,0.04)",
-            transform: [{ rotate: "35deg" }],
-          }}
-        />
-      ))}
-      <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
-        <AppText family="sora" weight="bold" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", textAlign: "center" }}>
-          {scooter.name}
-        </AppText>
-        <AppText family="inter" weight="medium" style={{ marginTop: 4, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: COLORS.gold }}>
-          {scooter.engine}
-        </AppText>
-      </View>
-    </LinearGradient>
+    <View style={{ height, borderRadius: 16, overflow: "hidden", backgroundColor: COLORS.black }}>
+      {imageUri ? (
+        <Image source={{ uri: imageUri }} resizeMode="cover" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+      ) : (
+        <LinearGradient
+          colors={[scooter.accent || COLORS.black, "#1A1A1A"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: "absolute", inset: 0 }}
+        >
+          {Array.from({ length: 10 }, (_, index) => (
+            <View
+              key={index}
+              style={{
+                position: "absolute",
+                left: index * 30 - 40,
+                top: -24,
+                width: 18,
+                height: height + 60,
+                backgroundColor: "rgba(255,255,255,0.04)",
+                transform: [{ rotate: "35deg" }],
+              }}
+            />
+          ))}
+        </LinearGradient>
+      )}
+
+      <LinearGradient
+        colors={imageUri ? ["rgba(8,8,10,0.08)", "rgba(8,8,10,0.42)", "rgba(8,8,10,0.86)"] : ["rgba(0,0,0,0.04)", "rgba(0,0,0,0.18)", "rgba(0,0,0,0.52)"]}
+        style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 14, justifyContent: "space-between" }}
+      >
+        <View style={{ alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.1)", borderWidth: 1, borderColor: "rgba(255,255,255,0.16)" }}>
+          <AppText family="inter" weight="bold" style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: COLORS.gold }}>
+            {scooter.typeLabel || scooter.type}
+          </AppText>
+        </View>
+        <View>
+          <AppText family="sora" weight="bold" style={{ fontSize: 16, color: COLORS.white, letterSpacing: -0.4 }}>
+            {scooter.name}
+          </AppText>
+          <AppText family="inter" weight="medium" style={{ marginTop: 4, fontSize: 11, letterSpacing: 1.1, textTransform: "uppercase", color: "rgba(255,255,255,0.72)" }}>
+            {scooter.engine}
+          </AppText>
+        </View>
+      </LinearGradient>
+    </View>
   );
 }
 
